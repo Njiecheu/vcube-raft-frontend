@@ -50,6 +50,122 @@ export interface PerformanceTestConfig {
 }
 
 class ApiService {
+  private currentNodeIndex = 0;
+  private failedNodes = new Set<number>();
+  private lastHealthCheck = 0;
+  private readonly HEALTH_CHECK_INTERVAL = 30000; // 30 secondes
+  private readonly REQUEST_TIMEOUT = 5000; // 5 secondes
+
+  constructor() {
+    console.log('🔧 ApiService initialisé avec failover multi-nœuds');
+    console.log('📍 Nœuds disponibles:', ALL_API_NODES);
+  }
+
+  private getCurrentNodeUrl(): string {
+    return ALL_API_NODES[this.currentNodeIndex];
+  }
+
+  private getNextHealthyNode(): number {
+    for (let i = 0; i < ALL_API_NODES.length; i++) {
+      const nodeIndex = (this.currentNodeIndex + i) % ALL_API_NODES.length;
+      if (!this.failedNodes.has(nodeIndex)) {
+        return nodeIndex;
+      }
+    }
+    // Si tous les nœuds sont marqués comme défaillants, réessayer avec le premier
+    this.failedNodes.clear();
+    return 0;
+  }
+
+  private markNodeAsFailed(nodeIndex: number): void {
+    this.failedNodes.add(nodeIndex);
+    console.warn(`❌ Nœud ${nodeIndex} (${ALL_API_NODES[nodeIndex]}) marqué comme défaillant`);
+    
+    // Basculer vers le prochain nœud sain
+    this.currentNodeIndex = this.getNextHealthyNode();
+    console.log(`🔄 Basculement vers le nœud ${this.currentNodeIndex} (${this.getCurrentNodeUrl()})`);
+  }
+
+  private async performHealthCheck(): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastHealthCheck < this.HEALTH_CHECK_INTERVAL) {
+      return;
+    }
+
+    this.lastHealthCheck = now;
+    console.log('🏥 Vérification de santé des nœuds...');
+
+    // Tester tous les nœuds marqués comme défaillants pour voir s'ils sont revenus
+    const healthCheckPromises = Array.from(this.failedNodes).map(async (nodeIndex) => {
+      try {
+        const response = await fetch(`${ALL_API_NODES[nodeIndex]}/api/health`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(3000)
+        });
+        
+        if (response.ok) {
+          this.failedNodes.delete(nodeIndex);
+          console.log(`✅ Nœud ${nodeIndex} (${ALL_API_NODES[nodeIndex]}) est de nouveau disponible`);
+        }
+      } catch (error) {
+        // Nœud toujours indisponible
+      }
+    });
+
+    await Promise.allSettled(healthCheckPromises);
+  }
+
+  private async fetchWithFailover(endpoint: string, options: RequestInit = {}): Promise<Response> {
+    await this.performHealthCheck();
+
+    let lastError: Error | null = null;
+    const maxAttempts = ALL_API_NODES.length;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const nodeUrl = this.getCurrentNodeUrl();
+      
+      try {
+        console.log(`🔄 Tentative ${attempt + 1}/${maxAttempts}: ${nodeUrl}${endpoint}`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT);
+
+        const response = await fetch(`${nodeUrl}${endpoint}`, {
+          ...options,
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          console.log(`✅ Succès avec le nœud ${this.currentNodeIndex}: ${nodeUrl}`);
+          return response;
+        } else if (response.status >= 500) {
+          // Erreur serveur, essayer le nœud suivant
+          throw new Error(`Erreur serveur ${response.status}: ${response.statusText}`);
+        } else {
+          // Erreur client (400-499), ne pas faire de failover
+          console.log(`⚠️ Erreur client ${response.status}, pas de failover`);
+          return response;
+        }
+      } catch (error) {
+        lastError = error as Error;
+        console.warn(`❌ Échec nœud ${this.currentNodeIndex} (${nodeUrl}):`, error);
+        
+        // Marquer le nœud comme défaillant et passer au suivant
+        this.markNodeAsFailed(this.currentNodeIndex);
+        
+        if (attempt === maxAttempts - 1) {
+          break;
+        }
+      }
+    }
+
+    // Tous les nœuds ont échoué
+    console.error('💥 Tous les nœuds API sont indisponibles');
+    throw new Error(`Tous les nœuds API sont indisponibles. Dernière erreur: ${lastError?.message}`);
+  }
+
   private getAuthHeaders(): HeadersInit {
     const token = localStorage.getItem('authToken');
     return {
@@ -69,41 +185,49 @@ class ApiService {
   // ============== AUTHENTIFICATION ==============
 
   async login(credentials: { username: string; password: string }) {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(credentials)
-    });
-    return this.handleResponse(response);
+    try {
+      const response = await this.fetchWithFailover('/api/auth/login', {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(credentials)
+      });
+      return this.handleResponse(response);
+    } catch (error) {
+      console.error('Erreur lors de la connexion:', error);
+      throw error;
+    }
   }
 
   async register(userData: { username: string; email: string; password: string; role: string }) {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(userData)
-    });
-    return this.handleResponse(response);
-  }
-
-  // ============== MÉTRIQUES RAFT (VRAIS ENDPOINTS) ==============
+    try {
+      const response = await this.fetchWithFailover('/api/auth/register', {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(userData)
+      });
+      return this.handleResponse(response);
+    } catch (error) {
+      console.error('Erreur lors de l\'inscription:', error);
+      throw error;
+    }
+  }  // ============== MÉTRIQUES RAFT (VRAIS ENDPOINTS) ==============
 
   async getRaftMetrics(): Promise<RaftMetrics> {
-    const response = await fetch(`${API_BASE_URL}/api/metrics/raft/current`, {
+    const response = await this.fetchWithFailover('/api/metrics/raft/current', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async getRaftChartData() {
-    const response = await fetch(`${API_BASE_URL}/api/metrics/raft/chart-data`, {
+    const response = await this.fetchWithFailover('/api/metrics/raft/chart-data', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async getRaftStatus() {
-    const response = await fetch(`${API_BASE_URL}/api/raft/status`, {
+    const response = await this.fetchWithFailover('/api/raft/status', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
@@ -112,14 +236,14 @@ class ApiService {
   // ============== MÉTRIQUES DE RÉSERVATION (VRAIS ENDPOINTS) ==============
 
   async getReservationMetrics(): Promise<ReservationMetrics> {
-    const response = await fetch(`${API_BASE_URL}/api/metrics/reservations/current`, {
+    const response = await this.fetchWithFailover('/api/metrics/reservations/current', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async getReservationChartData() {
-    const response = await fetch(`${API_BASE_URL}/api/metrics/reservations/chart-data`, {
+    const response = await this.fetchWithFailover('/api/metrics/reservations/chart-data', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
@@ -128,7 +252,7 @@ class ApiService {
   // ============== MÉTRIQUES DASHBOARD (VRAIS ENDPOINTS) ==============
 
   async getDashboardMetrics() {
-    const response = await fetch(`${API_BASE_URL}/api/metrics/dashboard`, {
+    const response = await this.fetchWithFailover('/api/metrics/dashboard', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
@@ -137,28 +261,28 @@ class ApiService {
   // ============== MÉTRIQUES HISTORIQUES ==============
 
   async getLatencyHistory() {
-    const response = await fetch(`${API_BASE_URL}/api/metrics/latency/history`, {
+    const response = await this.fetchWithFailover('/api/metrics/latency/history', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async getThroughputHistory() {
-    const response = await fetch(`${API_BASE_URL}/api/metrics/throughput/history`, {
+    const response = await this.fetchWithFailover('/api/metrics/throughput/history', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async getVCubeOverheadHistory() {
-    const response = await fetch(`${API_BASE_URL}/api/metrics/vcube/overhead/history`, {
+    const response = await this.fetchWithFailover('/api/metrics/vcube/overhead/history', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async getVCubeCompactionHistory() {
-    const response = await fetch(`${API_BASE_URL}/api/metrics/vcube/compaction/history`, {
+    const response = await this.fetchWithFailover('/api/metrics/vcube/compaction/history', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
@@ -167,7 +291,7 @@ class ApiService {
   // ============== TESTS DE PERFORMANCE (VRAIS ENDPOINTS) ==============
 
   async runPerformanceTest(config: PerformanceTestConfig) {
-    const response = await fetch(`${API_BASE_URL}/api/performance-test/run`, {
+    const response = await this.fetchWithFailover('/api/performance-test/run', {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(config)
@@ -177,7 +301,7 @@ class ApiService {
 
   async runQuickTest(params: { providers: number; seatsPerProvider: number; nodes: number; users: number }) {
     const queryParams = new URLSearchParams(params as any).toString();
-    const response = await fetch(`${API_BASE_URL}/api/performance-test/quick-test?${queryParams}`, {
+    const response = await this.fetchWithFailover(`/api/performance-test/quick-test?${queryParams}`, {
       method: 'POST',
       headers: this.getAuthHeaders()
     });
@@ -186,7 +310,7 @@ class ApiService {
 
   async runStressTest(params: { providers: number; seatsPerProvider: number; nodes: number; users: number }) {
     const queryParams = new URLSearchParams(params as any).toString();
-    const response = await fetch(`${API_BASE_URL}/api/performance-test/stress-test?${queryParams}`, {
+    const response = await this.fetchWithFailover(`/api/performance-test/stress-test?${queryParams}`, {
       method: 'POST',
       headers: this.getAuthHeaders()
     });
@@ -194,7 +318,7 @@ class ApiService {
   }
 
   async stopPerformanceTest() {
-    const response = await fetch(`${API_BASE_URL}/api/performance-test/stop`, {
+    const response = await this.fetchWithFailover('/api/performance-test/stop', {
       method: 'POST',
       headers: this.getAuthHeaders()
     });
@@ -202,14 +326,14 @@ class ApiService {
   }
 
   async getTestStatus() {
-    const response = await fetch(`${API_BASE_URL}/api/performance-test/status`, {
+    const response = await this.fetchWithFailover('/api/performance-test/status', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async getCurrentTestResults() {
-    const response = await fetch(`${API_BASE_URL}/api/performance-test/current-results`, {
+    const response = await this.fetchWithFailover('/api/performance-test/current-results', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
@@ -218,7 +342,7 @@ class ApiService {
   // ============== SOUSCRIPTIONS (VRAIS ENDPOINTS) ==============
 
   async startAutoSubscription(config: any) {
-    const response = await fetch(`${API_BASE_URL}/api/performance-test/subscriptions/start`, {
+    const response = await this.fetchWithFailover('/api/performance-test/subscriptions/start', {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(config)
@@ -227,7 +351,7 @@ class ApiService {
   }
 
   async stopAutoSubscription() {
-    const response = await fetch(`${API_BASE_URL}/api/performance-test/subscriptions/stop`, {
+    const response = await this.fetchWithFailover('/api/performance-test/subscriptions/stop', {
       method: 'POST',
       headers: this.getAuthHeaders()
     });
@@ -235,7 +359,7 @@ class ApiService {
   }
 
   async getSubscriptionMetrics() {
-    const response = await fetch(`${API_BASE_URL}/api/performance-test/subscriptions/metrics`, {
+    const response = await this.fetchWithFailover('/api/performance-test/subscriptions/metrics', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
@@ -243,36 +367,54 @@ class ApiService {
 
   // ============== MÉTRIQUES EN TEMPS RÉEL (SERVER-SENT EVENTS) ==============
 
+  private createEventSourceWithFailover(endpoint: string): EventSource {
+    const currentUrl = this.getCurrentNodeUrl();
+    console.log(`🔗 Création EventSource: ${currentUrl}${endpoint}`);
+    
+    const eventSource = new EventSource(`${currentUrl}${endpoint}`);
+    
+    // Gérer les erreurs de connexion
+    eventSource.onerror = (error) => {
+      console.warn(`❌ Erreur EventSource sur ${currentUrl}${endpoint}:`, error);
+      // Note: Pour une gestion complète du failover des EventSource,
+      // il faudrait fermer cette connexion et en créer une nouvelle
+      // sur un autre nœud, mais cela nécessite une logique plus complexe
+      // au niveau du composant qui utilise l'EventSource
+    };
+    
+    return eventSource;
+  }
+
   createRaftEventStream(): EventSource {
-    return new EventSource(`${API_BASE_URL}/api/metrics/raft/events/stream`);
+    return this.createEventSourceWithFailover('/api/metrics/raft/events/stream');
   }
 
   createReservationEventStream(): EventSource {
-    return new EventSource(`${API_BASE_URL}/api/metrics/reservations/events/stream`);
+    return this.createEventSourceWithFailover('/api/metrics/reservations/events/stream');
   }
 
   createVCubeEventStream(): EventSource {
-    return new EventSource(`${API_BASE_URL}/api/metrics/vcube/events/stream`);
+    return this.createEventSourceWithFailover('/api/metrics/vcube/events/stream');
   }
 
   // ============== RÉSERVATIONS ==============
 
   async getProviders() {
-    const response = await fetch(`${API_BASE_URL}/api/providers`, {
+    const response = await this.fetchWithFailover('/api/providers', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async getSeats(providerId: string) {
-    const response = await fetch(`${API_BASE_URL}/api/providers/${providerId}/seats`, {
+    const response = await this.fetchWithFailover(`/api/providers/${providerId}/seats`, {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async reserveSeat(reservationData: any) {
-    const response = await fetch(`${API_BASE_URL}/api/reservations`, {
+    const response = await this.fetchWithFailover('/api/reservations', {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(reservationData)
@@ -281,14 +423,14 @@ class ApiService {
   }
 
   async getUserReservations() {
-    const response = await fetch(`${API_BASE_URL}/api/reservations/user`, {
+    const response = await this.fetchWithFailover('/api/reservations/user', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async cancelReservation(reservationId: string) {
-    const response = await fetch(`${API_BASE_URL}/api/reservations/${reservationId}`, {
+    const response = await this.fetchWithFailover(`/api/reservations/${reservationId}`, {
       method: 'DELETE',
       headers: this.getAuthHeaders()
     });
@@ -298,24 +440,89 @@ class ApiService {
   // ============== ADMIN ==============
 
   async getAdminStats() {
-    const response = await fetch(`${API_BASE_URL}/api/admin/stats`, {
+    const response = await this.fetchWithFailover('/api/admin/stats', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async getReservationsByHour() {
-    const response = await fetch(`${API_BASE_URL}/api/admin/charts/reservations-by-hour`, {
+    const response = await this.fetchWithFailover('/api/admin/charts/reservations-by-hour', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   async getTopProviders() {
-    const response = await fetch(`${API_BASE_URL}/api/admin/charts/top-providers`, {
+    const response = await this.fetchWithFailover('/api/admin/charts/top-providers', {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
+  }
+
+  // ============== MONITORING MULTI-NŒUDS ==============
+
+  async getNodesHealthStatus(): Promise<{
+    currentNode: number;
+    nodes: Array<{
+      index: number;
+      url: string;
+      status: 'healthy' | 'failed' | 'unknown';
+      lastChecked: Date | null;
+      responseTime?: number;
+    }>;
+  }> {
+    const nodes = ALL_API_NODES.map((url, index) => ({
+      index,
+      url,
+      status: (this.failedNodes.has(index) ? 'failed' : 'healthy') as 'healthy' | 'failed' | 'unknown',
+      lastChecked: null as Date | null,
+      responseTime: undefined as number | undefined
+    }));
+
+    // Tester tous les nœuds en parallèle
+    const healthChecks = nodes.map(async (node) => {
+      const startTime = Date.now();
+      try {
+        const response = await fetch(`${node.url}/api/health`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(3000)
+        });
+        const endTime = Date.now();
+        
+        node.lastChecked = new Date();
+        node.responseTime = endTime - startTime;
+        node.status = response.ok ? 'healthy' : 'failed';
+      } catch (error) {
+        node.lastChecked = new Date();
+        node.status = 'failed';
+      }
+      return node;
+    });
+
+    await Promise.allSettled(healthChecks);
+
+    return {
+      currentNode: this.currentNodeIndex,
+      nodes
+    };
+  }
+
+  // Méthode pour forcer le basculement vers un nœud spécifique
+  switchToNode(nodeIndex: number): boolean {
+    if (nodeIndex >= 0 && nodeIndex < ALL_API_NODES.length) {
+      console.log(`🔄 Basculement manuel vers le nœud ${nodeIndex} (${ALL_API_NODES[nodeIndex]})`);
+      this.currentNodeIndex = nodeIndex;
+      this.failedNodes.delete(nodeIndex); // Retirer le nœud des nœuds défaillants
+      return true;
+    }
+    return false;
+  }
+
+  // Réinitialiser l'état des nœuds défaillants
+  resetFailedNodes(): void {
+    console.log('🔄 Réinitialisation de l\'état des nœuds défaillants');
+    this.failedNodes.clear();
   }
 }
 

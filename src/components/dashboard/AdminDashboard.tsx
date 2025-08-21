@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
 import { Chart } from 'chart.js/auto';
+import NodesMonitor from '../monitoring/NodesMonitor';
 
 interface AdminStats {
   totalUsers: number;
@@ -430,6 +431,9 @@ const AdminDashboard: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Monitoring des nœuds backend */}
+        <NodesMonitor />
       </div>
     </div>
   );
