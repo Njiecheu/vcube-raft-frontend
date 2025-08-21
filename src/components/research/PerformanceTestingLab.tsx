@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Line, Bar } from 'react-chartjs-2';
 
 interface TestConfiguration {
@@ -44,7 +44,6 @@ const PerformanceTestingLab: React.FC = () => {
     hotProducerCount: 3
   });
 
-  const [currentTest, setCurrentTest] = useState<TestResults | null>(null);
   const [testHistory, setTestHistory] = useState<TestResults[]>([]);
   const [isTestRunning, setIsTestRunning] = useState(false);
   const [realTimeData, setRealTimeData] = useState<any[]>([]);
@@ -65,9 +64,6 @@ const PerformanceTestingLab: React.FC = () => {
       });
 
       if (response.ok) {
-        const testResult = await response.json();
-        setCurrentTest(testResult);
-        
         // Démarrer le monitoring en temps réel
         startRealTimeMonitoring();
       } else {
