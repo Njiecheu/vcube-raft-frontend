@@ -1,0 +1,274 @@
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+class ApiService {
+  private getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('authToken');
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+  }
+
+  private async handleResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+    return response.json();
+  }
+
+  // ============== AUTHENTIFICATION ==============
+
+  async login(credentials: { username: string; password: string }) {
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(credentials)
+    });
+    return this.handleResponse(response);
+  }
+
+  async register(userData: { username: string; email: string; password: string; role: string }) {
+    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(userData)
+    });
+    return this.handleResponse(response);
+  }
+
+  // ============== MÉTRIQUES ADMIN ==============
+
+  async getAdminStats() {
+    const response = await fetch(`${API_BASE_URL}/api/admin/stats`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getReservationsPerSecond() {
+    const response = await fetch(`${API_BASE_URL}/api/admin/charts/reservations-per-second`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getProcessingTime() {
+    const response = await fetch(`${API_BASE_URL}/api/admin/charts/processing-time`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getRaftConsensus() {
+    const response = await fetch(`${API_BASE_URL}/api/admin/charts/raft-consensus`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getReservationsByHour() {
+    const response = await fetch(`${API_BASE_URL}/api/admin/charts/reservations-by-hour`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getTopProviders() {
+    const response = await fetch(`${API_BASE_URL}/api/admin/charts/top-providers`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // ============== TESTS DE PERFORMANCE ==============
+
+  async runPerformanceTest(config: any) {
+    const response = await fetch(`${API_BASE_URL}/api/performance-test/run`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(config)
+    });
+    return this.handleResponse(response);
+  }
+
+  async runQuickTest(params: { providers: number; seatsPerProvider: number; nodes: number; users: number }) {
+    const queryParams = new URLSearchParams(params as any).toString();
+    const response = await fetch(`${API_BASE_URL}/api/performance-test/quick-test?${queryParams}`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async runStressTest(params: { providers: number; seatsPerProvider: number; nodes: number; users: number }) {
+    const queryParams = new URLSearchParams(params as any).toString();
+    const response = await fetch(`${API_BASE_URL}/api/performance-test/stress-test?${queryParams}`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async stopPerformanceTest() {
+    const response = await fetch(`${API_BASE_URL}/api/performance-test/stop`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getTestStatus() {
+    const response = await fetch(`${API_BASE_URL}/api/performance-test/status`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getCurrentTestResults() {
+    const response = await fetch(`${API_BASE_URL}/api/performance-test/current-results`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // ============== MÉTRIQUES RAFT ==============
+
+  async getRaftMetrics() {
+    const response = await fetch(`${API_BASE_URL}/api/raft/metrics`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getRaftStatus() {
+    const response = await fetch(`${API_BASE_URL}/api/raft/status`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // ============== MÉTRIQUES VCUBE ==============
+
+  async getVCubeMetrics() {
+    const response = await fetch(`${API_BASE_URL}/api/vcube/metrics`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getVCubeEvents() {
+    const response = await fetch(`${API_BASE_URL}/api/vcube/events`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // ============== MÉTRIQUES DE RECHERCHE ==============
+
+  async getResearchMetrics() {
+    const response = await fetch(`${API_BASE_URL}/api/metrics/research`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getSecurityMetrics() {
+    const response = await fetch(`${API_BASE_URL}/api/metrics/security`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getFaultToleranceMetrics() {
+    const response = await fetch(`${API_BASE_URL}/api/metrics/fault-tolerance`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getHotProducerMetrics() {
+    const response = await fetch(`${API_BASE_URL}/api/metrics/hot-producers`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // ============== SOUSCRIPTIONS ==============
+
+  async startAutoSubscription(config: any) {
+    const response = await fetch(`${API_BASE_URL}/api/performance-test/subscriptions/start`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(config)
+    });
+    return this.handleResponse(response);
+  }
+
+  async stopAutoSubscription() {
+    const response = await fetch(`${API_BASE_URL}/api/performance-test/subscriptions/stop`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getSubscriptionMetrics() {
+    const response = await fetch(`${API_BASE_URL}/api/performance-test/subscriptions/metrics`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // ============== WEBSOCKET ==============
+
+  createWebSocket(endpoint: string): WebSocket {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}${endpoint}`;
+    return new WebSocket(wsUrl);
+  }
+
+  // ============== RÉSERVATIONS ==============
+
+  async getProviders() {
+    const response = await fetch(`${API_BASE_URL}/api/providers`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async getSeats(providerId: string) {
+    const response = await fetch(`${API_BASE_URL}/api/providers/${providerId}/seats`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async reserveSeat(reservationData: any) {
+    const response = await fetch(`${API_BASE_URL}/api/reservations`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(reservationData)
+    });
+    return this.handleResponse(response);
+  }
+
+  async getUserReservations() {
+    const response = await fetch(`${API_BASE_URL}/api/reservations/user`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async cancelReservation(reservationId: string) {
+    const response = await fetch(`${API_BASE_URL}/api/reservations/${reservationId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+}
+
+// Instance singleton
+export const apiService = new ApiService();
+export default apiService;
