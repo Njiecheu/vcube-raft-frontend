@@ -1,4 +1,16 @@
+// Configuration multi-nœuds pour le failover (extension future)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+// URLs de secours pour le failover (non utilisées actuellement)
+const BACKUP_URLS = import.meta.env.VITE_API_BACKUP_URLS 
+  ? import.meta.env.VITE_API_BACKUP_URLS.split(',').map((url: string) => url.trim())
+  : ['http://localhost:8081', 'http://localhost:8082'];
+
+// Liste complète des nœuds disponibles
+const ALL_API_NODES = [API_BASE_URL, ...BACKUP_URLS];
+
+// TODO: Implémenter le failover automatique dans une future version
+console.log('🔧 Configuration multi-nœuds:', { primary: API_BASE_URL, backups: BACKUP_URLS });
 
 export interface RaftMetrics {
   currentTerm: number;
