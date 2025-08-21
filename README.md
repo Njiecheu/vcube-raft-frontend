@@ -2,7 +2,7 @@
 
 ## 🎯 Objectifs de Recherche Démontrés
 
-Ce frontend React démontre les **4 objectifs de recherche** de votre mémoire avec des métriques en temps réel :
+Ce frontend React démontre les **4 objectifs de recherche** de mon mémoire avec des métriques en temps réel :
 
 ### (i) Compromis Latence Causale vs Cohérence Forte
 - **VCube-PS** : Latence optimisée pour la diffusion causale
