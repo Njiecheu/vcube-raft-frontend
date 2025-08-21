@@ -270,7 +270,7 @@ const EnhancedResearchDashboard: React.FC = () => {
             x: m.hotProducerLoad,
             y: m.shardingEfficiency
           })),
-          backgroundColor: metrics.map((m, index) => {
+          backgroundColor: metrics.map((_m, index) => {
             const alpha = 0.3 + (index / metrics.length) * 0.7;
             return `rgba(139, 92, 246, ${alpha})`;
           }),
@@ -368,7 +368,6 @@ const EnhancedResearchDashboard: React.FC = () => {
     }
   };
 
-  const currentObjective = researchObjectives.find(obj => obj.id === selectedObjective);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
