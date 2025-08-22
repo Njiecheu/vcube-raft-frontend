@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Line, Bar } from 'react-chartjs-2';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 interface TestConfiguration {
   numberOfProviders: number;
   seatsPerProvider: number;
@@ -54,7 +56,7 @@ const PerformanceTestingLab: React.FC = () => {
     setRealTimeData([]);
 
     try {
-      const response = await fetch('/api/performance-test/run', {
+      const response = await fetch(`${API_BASE_URL}/api/performance-test/run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +81,7 @@ const PerformanceTestingLab: React.FC = () => {
   const startRealTimeMonitoring = () => {
     const interval = setInterval(async () => {
       try {
-        const response = await fetch('/api/performance-test/current-results', {
+        const response = await fetch(`${API_BASE_URL}/api/performance-test/current-results`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`
           }
@@ -110,7 +112,7 @@ const PerformanceTestingLab: React.FC = () => {
   // Arrêt manuel du test
   const stopTest = async () => {
     try {
-      await fetch('/api/performance-test/stop', {
+      await fetch(`${API_BASE_URL}/api/performance-test/stop`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
 import { Chart } from 'chart.js/auto';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 interface AdminStats {
   totalUsers: number;
   totalProviders: number;
@@ -208,7 +210,7 @@ const AdminDashboard: React.FC = () => {
 
   const loadSystemStats = async () => {
     try {
-      const response = await fetch('/api/admin/stats');
+      const response = await fetch(`${API_BASE_URL}/api/admin/stats`);
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -222,10 +224,10 @@ const AdminDashboard: React.FC = () => {
     try {
       // Charger les données des graphiques
       const responses = await Promise.all([
-        fetch('/api/admin/charts/reservations-per-second'),
-        fetch('/api/admin/charts/processing-time'),
-        fetch('/api/admin/charts/raft-consensus'),
-        fetch('/api/admin/charts/reservations-by-hour')
+        fetch(`${API_BASE_URL}/api/admin/charts/reservations-per-second`),
+        fetch(`${API_BASE_URL}/api/admin/charts/processing-time`),
+        fetch(`${API_BASE_URL}/api/admin/charts/raft-consensus`),
+        fetch(`${API_BASE_URL}/api/admin/charts/reservations-by-hour`)
       ]);
 
       const [reservationsData, processingData, raftData, hourlyData] = await Promise.all(
@@ -252,7 +254,7 @@ const AdminDashboard: React.FC = () => {
 
   const loadTopProviders = async () => {
     try {
-      const response = await fetch('/api/admin/charts/top-providers');
+      const response = await fetch(`${API_BASE_URL}/api/admin/charts/top-providers`);
       if (response.ok) {
         const data = await response.json();
         setTopProviders(data);

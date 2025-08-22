@@ -1,4 +1,3 @@
-import { envConfig } from './config/env';
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
 import Login from './components/auth/Login'

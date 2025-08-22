@@ -1,10 +1,8 @@
-
-
-
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 interface LoginProps {
   onLogin?: (role: string) => void;
@@ -55,7 +53,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setAlert(null);
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData),
@@ -91,10 +89,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     let endpoint = '';
     if (userType === 'user') {
       registrationData = { email, password, fullName, phone };
-      endpoint = '/api/auth/register/user';
+      endpoint = `${API_BASE_URL}/api/auth/register/user`;
     } else {
       registrationData = { email, password, contactName: fullName, phone, companyName, description };
-      endpoint = '/api/auth/register/provider';
+      endpoint = `${API_BASE_URL}/api/auth/register/provider`;
     }
     try {
       const response = await fetch(endpoint, {
