@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './components/auth/Login'
 import AdminDashboard from './components/dashboard/NewAdminDashboard'
 import ProviderDashboard from './components/dashboard/NewProviderDashboard'
-import UserDashboard from './components/user/NewUserDashboard'
+import NewUserDashboard from './components/user/NewUserDashboard'
 import ResearchDashboard from './components/research/ResearchDashboard'
 import PerformanceTestingLab from './components/research/PerformanceTestingLab'
 import VCubeRaftDemonstration from './components/research/VCubeRaftDemonstration'
@@ -31,12 +31,6 @@ function App() {
     setUserRole(role)
   }
 
-  const handleLogout = () => {
-    setIsAuthenticated(false)
-    setUserRole('')
-    localStorage.clear()
-  }
-
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -48,37 +42,6 @@ function App() {
   return (
     <Router>
       <div className="app">
-        {/* Navigation Header */}
-        {isAuthenticated && (
-          <header className="app-header">
-            <div className="nav-container">
-              <div className="nav-brand">
-                <h1>🔬 VCube+Raft Research Platform</h1>
-                <span className="user-info">
-                  👤 {userRole} | {localStorage.getItem('userId')}
-                </span>
-              </div>
-              <nav className="nav-links">
-                <Link to="/dashboard" className="nav-link">
-                  📊 Dashboard
-                </Link>
-                <Link to="/research" className="nav-link">
-                  🔬 Recherche
-                </Link>
-                <Link to="/performance" className="nav-link">
-                  ⚡ Performance
-                </Link>
-                <Link to="/demonstration" className="nav-link demo-link">
-                  🎯 Démonstration Live
-                </Link>
-                <button onClick={handleLogout} className="logout-btn">
-                  🚪 Déconnexion
-                </button>
-              </nav>
-            </div>
-          </header>
-        )}
-
         {/* Main Content */}
         <main className="app-main">
           <Routes>
@@ -141,7 +104,7 @@ function App() {
                 !isAuthenticated ? (
                   <Navigate to="/" replace />
                 ) : userRole === 'USER' ? (
-                  <UserDashboard />
+                  <NewUserDashboard />
                 ) : (
                   <Navigate to="/" replace />
                 )
@@ -172,7 +135,7 @@ function App() {
                   userRole === 'provider' ? <Navigate to="/provider-dashboard" replace /> :
                   userRole === 'user' ? <Navigate to="/user-dashboard" replace /> :
                   userRole === 'researcher' ? <Navigate to="/research-dashboard" replace /> :
-                  <UserDashboard />
+                  <NewUserDashboard />
                 )
               } 
             />
