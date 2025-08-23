@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TEST_ACCOUNTS } from '../../data/testAccounts';
+// import { TEST_ACCOUNTS } from '../../data/testAccounts';
 import './Login.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
