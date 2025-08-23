@@ -123,6 +123,20 @@ class ApiService {
     let lastError: Error | null = null;
     const maxAttempts = ALL_API_NODES.length;
 
+    // Fusionner les headers par défaut avec ceux fournis
+    const defaultHeaders = {
+      'Accept': 'application/json',
+      'ngrok-skip-browser-warning': 'true'
+    };
+    
+    const mergedOptions = {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers
+      }
+    };
+
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const nodeUrl = this.getCurrentNodeUrl();
       
@@ -133,7 +147,7 @@ class ApiService {
         const timeoutId = setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT);
 
         const response = await fetch(`${nodeUrl}${endpoint}`, {
-          ...options,
+          ...mergedOptions,
           signal: controller.signal
         });
 
@@ -173,6 +187,8 @@ class ApiService {
     const userRole = localStorage.getItem('userRole');
     return {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'ngrok-skip-browser-warning': 'true', // Contourne l'avertissement ngrok
       ...(userId && { 'X-User-Id': userId }),
       ...(userRole && { 'X-User-Role': userRole })
     };
