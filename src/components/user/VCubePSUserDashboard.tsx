@@ -144,19 +144,26 @@ const VCubePSUserDashboard: React.FC = () => {
       const vehicleSeats = await apiService.getVehicleSeats(selectedVehicleId);
       const seatsData = vehicleSeats as Seat[];
       
-      // Si pas de sièges dans la DB, créer des sièges par défaut avec des IDs simples
+      // Si pas de sièges dans la DB, créer des sièges par défaut avec des UUIDs générés
       if (seatsData.length === 0) {
         const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId);
         const capacity = selectedVehicle?.capacity || selectedVehicle?.seatCount || 0;
         
-        const defaultSeats = Array.from({ length: capacity }, (_, index) => ({
-          id: `seat-${index + 1}`, // ID simplifié
-          vehicleId: selectedVehicleId,
-          label: `S${index + 1}`,
-          seatNumber: `S${index + 1}`,
-          available: true,
-          isReserved: false
-        }));
+        const defaultSeats = Array.from({ length: capacity }, (_, index) => {
+          // Générer un UUID simple basé sur l'index (non cryptographiquement sûr mais valide)
+          const baseUuid = '00000000-0000-4000-8000-';
+          const paddedIndex = (1000 + index).toString().padStart(12, '0');
+          const generatedId = baseUuid + paddedIndex;
+          
+          return {
+            id: generatedId,
+            vehicleId: selectedVehicleId,
+            label: `S${index + 1}`,
+            seatNumber: `S${index + 1}`,
+            available: true,
+            isReserved: false
+          };
+        });
         
         setSeats(defaultSeats);
       } else {
@@ -185,19 +192,12 @@ const VCubePSUserDashboard: React.FC = () => {
       setError('');
       setSuccess('');
       
-      // Pour les sièges générés côté client, utiliser un ID simplifié
-      let actualSeatId = selectedSeat;
-      if (selectedSeat.startsWith('seat-')) {
-        // Convertir en format numérique simple
-        const seatNumber = selectedSeatNumber || 1;
-        actualSeatId = seatNumber.toString();
-      }
-      
+      // Utiliser directement l'ID du siège sélectionné (déjà un UUID valide)
       const reservationData = {
         userId,
         providerId: currentProviderId,
         vehicleId: selectedVehicleId,
-        seatId: actualSeatId
+        seatId: selectedSeat // UUID valide généré ou récupéré de l'API
       };
       
       console.log('Données de réservation:', reservationData);

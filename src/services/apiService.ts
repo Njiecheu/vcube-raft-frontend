@@ -148,7 +148,8 @@ class ApiService {
 
         const response = await fetch(`${nodeUrl}${endpoint}`, {
           ...mergedOptions,
-          signal: controller.signal
+          signal: controller.signal,
+          redirect: 'follow' // Suivre automatiquement les redirections
         });
 
         clearTimeout(timeoutId);
@@ -157,7 +158,20 @@ class ApiService {
           console.log(`✅ Succès avec le nœud ${this.currentNodeIndex}: ${nodeUrl}`);
           return response;
         } else if (response.status >= 500) {
-          // Erreur serveur, essayer le nœud suivant
+          // Cloner la réponse pour pouvoir lire le contenu
+          const responseClone = response.clone();
+          try {
+            const errorText = await responseClone.text();
+            if (errorText.includes('This node is not the leader')) {
+              console.warn(`🔄 Nœud ${this.currentNodeIndex} n'est pas le leader, basculement vers le prochain nœud`);
+              // Ne pas marquer comme défaillant, juste essayer le nœud suivant
+              this.currentNodeIndex = this.getNextHealthyNode();
+              throw new Error(`Redirection leadership: ${errorText}`);
+            }
+          } catch (e) {
+            // Si on ne peut pas lire l'erreur, traiter comme une erreur serveur normale
+          }
+          // Autres erreurs serveur, essayer le nœud suivant
           throw new Error(`Erreur serveur ${response.status}: ${response.statusText}`);
         } else {
           // Erreur client (400-499), ne pas faire de failover
