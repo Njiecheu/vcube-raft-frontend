@@ -1,16 +1,10 @@
 /* Dashboard Utilisateur Styles */
 .user-dashboard {
-  padding: 0;
+  padding: 20px;
   width: 100%;
   margin: 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
-}
-
-.dashboard-content {
-  padding: 20px;
-  width: 100%;
-  max-width: none;
 }
 
 .dashboard-header {
