@@ -310,7 +310,7 @@ const VCubePSUserDashboard: React.FC = () => {
                 value={selectedVehicleId}
                 onChange={(e) => handleVehicleSelection(e.target.value)}
               >
-                <option value="">Choisir un véhicule...</option>
+                <option value="">Sélectionnez un véhicule</option>
                 {Object.values(groupedVehicles).map(({ provider, vehicles: providerVehicles }) => (
                   <optgroup key={provider.id} label={provider.name || provider.companyName || 'Fournisseur'}>
                     {providerVehicles.map(vehicle => {
