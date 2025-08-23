@@ -59,6 +59,8 @@ class ApiService {
   constructor() {
     console.log('🔧 ApiService initialisé avec failover multi-nœuds');
     console.log('📍 Nœuds disponibles:', ALL_API_NODES);
+    console.log('🌍 Environment détecté:', import.meta.env.VITE_ENVIRONMENT);
+    console.log('🔗 URL principale configurée:', API_BASE_URL);
   }
 
   private getCurrentNodeUrl(): string {
