@@ -62,11 +62,29 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       if (response.ok && result.success) {
         localStorage.setItem('userRole', result.role);
         localStorage.setItem('userId', result.userId);
+        localStorage.setItem('userName', result.userName || loginData.email);
+        
         if (onLogin) {
           onLogin(result.role);
         }
-        // Rediriger vers le dashboard
-        navigate('/dashboard');
+        
+        // Rediriger en fonction du rôle
+        switch (result.role) {
+          case 'admin':
+            navigate('/admin-dashboard');
+            break;
+          case 'provider':
+            navigate('/provider-dashboard');
+            break;
+          case 'user':
+            navigate('/user-dashboard');
+            break;
+          case 'researcher':
+            navigate('/research-dashboard');
+            break;
+          default:
+            navigate('/dashboard');
+        }
       } else {
         showAlert(result.message || 'Erreur de connexion');
       }

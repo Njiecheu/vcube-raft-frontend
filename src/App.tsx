@@ -102,13 +102,68 @@ function App() {
 
             {/* Protected Routes */}
             <Route 
+              path="/admin-dashboard" 
+              element={
+                !isAuthenticated ? (
+                  <Navigate to="/" replace />
+                ) : userRole === 'admin' ? (
+                  <AdminDashboard />
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              } 
+            />
+
+            <Route 
+              path="/provider-dashboard" 
+              element={
+                !isAuthenticated ? (
+                  <Navigate to="/" replace />
+                ) : userRole === 'provider' ? (
+                  <ProviderDashboard />
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              } 
+            />
+
+            <Route 
+              path="/user-dashboard" 
+              element={
+                !isAuthenticated ? (
+                  <Navigate to="/" replace />
+                ) : userRole === 'user' ? (
+                  <UserDashboard />
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              } 
+            />
+
+            <Route 
+              path="/research-dashboard" 
+              element={
+                !isAuthenticated ? (
+                  <Navigate to="/" replace />
+                ) : userRole === 'researcher' ? (
+                  <ResearchDashboard />
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              } 
+            />
+
+            {/* Legacy dashboard route for backward compatibility */}
+            <Route 
               path="/dashboard" 
               element={
                 !isAuthenticated ? (
                   <Navigate to="/" replace />
                 ) : (
-                  userRole === 'ADMIN' ? <AdminDashboard /> :
-                  userRole === 'PROVIDER' ? <ProviderDashboard /> :
+                  userRole === 'admin' ? <Navigate to="/admin-dashboard" replace /> :
+                  userRole === 'provider' ? <Navigate to="/provider-dashboard" replace /> :
+                  userRole === 'user' ? <Navigate to="/user-dashboard" replace /> :
+                  userRole === 'researcher' ? <Navigate to="/research-dashboard" replace /> :
                   <UserDashboard />
                 )
               } 
