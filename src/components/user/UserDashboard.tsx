@@ -27,6 +27,7 @@ interface Seat {
 interface Reservation {
   id: string;
   userId: string;
+  providerId: string;
   vehicleId: string;
   seatId: string;
   status: 'CONFIRMED' | 'CANCELLED' | 'PENDING';
