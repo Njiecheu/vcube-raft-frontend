@@ -323,7 +323,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           )}
 
           {/* Informations des comptes de test */}
-          {tab === 'login' && (
+          {/* {tab === 'login' && (
             <div style={{ 
               background: 'rgba(255,255,255,0.1)', 
               padding: '1rem', 
@@ -338,7 +338,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <p style={{ margin: '0.25rem 0' }}><strong>🔧 Admin :</strong> admin@vcube.com / admin123</p>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Login Form */}
           <form
