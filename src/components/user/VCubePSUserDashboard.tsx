@@ -396,6 +396,7 @@ const VCubePSUserDashboard: React.FC = () => {
               ) : (
                 reservations.map(reservation => {
                   const vehicle = vehicles.find(v => v.id === reservation.vehicleId);
+                  const provider = providers.find(p => p.id === reservation.providerId);
                   const statusClass = `status-${reservation.status.toLowerCase()}`;
                   const statusText = {
                     'PENDING': 'En attente',
@@ -409,6 +410,7 @@ const VCubePSUserDashboard: React.FC = () => {
                       <div className="reservation-info">
                         <h4>Réservation #{reservation.id.substring(0, 8)}</h4>
                         <p><strong>Véhicule:</strong> {vehicle?.name || vehicle?.make || 'Véhicule inconnu'}</p>
+                        <p><strong>Fournisseur:</strong> {provider?.name || provider?.companyName || 'Fournisseur inconnu'}</p>
                         <p><strong>Siège:</strong> {reservation.seatId.substring(0, 8)}...</p>
                         <p><strong>Date:</strong> {new Date(reservation.createdAt).toLocaleDateString('fr-FR')}</p>
                       </div>
