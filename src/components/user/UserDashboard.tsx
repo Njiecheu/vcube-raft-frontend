@@ -278,8 +278,10 @@ const UserDashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="user-dashboard">
-        <div className="loading-container">
-          <div className="loading-spinner">🎫 Chargement des véhicules disponibles...</div>
+        <div className="dashboard-content">
+          <div className="loading-container">
+            <div className="loading-spinner">🎫 Chargement des véhicules disponibles...</div>
+          </div>
         </div>
       </div>
     );
@@ -287,17 +289,18 @@ const UserDashboard: React.FC = () => {
 
   return (
     <div className="user-dashboard">
-      <header className="dashboard-header">
-        <h1>🎫 Dashboard Utilisateur</h1>
-        <p>Réservez vos sièges dans les véhicules disponibles</p>
-      </header>
+      <div className="dashboard-content">
+        <header className="dashboard-header">
+          <h1>🎫 Dashboard Utilisateur</h1>
+          <p>Réservez vos sièges dans les véhicules disponibles</p>
+        </header>
 
-      {error && (
-        <div className="error-banner">
-          <p>❌ {error}</p>
-          <button onClick={loadUserData}>🔄 Réessayer</button>
-        </div>
-      )}
+        {error && (
+          <div className="error-banner">
+            <p>❌ {error}</p>
+            <button onClick={loadUserData}>🔄 Réessayer</button>
+          </div>
+        )}
 
       {/* Navigation */}
       <nav className="dashboard-nav">
@@ -420,6 +423,7 @@ const UserDashboard: React.FC = () => {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 };
