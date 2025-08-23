@@ -224,26 +224,6 @@ const VCubePSUserDashboard: React.FC = () => {
     }
   };
 
-  // Annuler une réservation
-  const cancelReservation = async (reservationId: string) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir annuler cette réservation ?')) {
-      return;
-    }
-
-    try {
-      await apiService.cancelReservation(reservationId);
-      setSuccess('Réservation annulée avec succès');
-      
-      await loadUserReservations();
-      if (selectedVehicleId) {
-        await loadSeats();
-      }
-    } catch (err) {
-      console.error('Erreur d\'annulation:', err);
-      setError('Erreur lors de l\'annulation');
-    }
-  };
-
   // Grouper véhicules par fournisseur
   const getGroupedVehicles = () => {
     const grouped: { [key: string]: { provider: Provider; vehicles: Vehicle[] } } = {};
@@ -410,11 +390,12 @@ const VCubePSUserDashboard: React.FC = () => {
           {/* Mes réservations */}
           <div className="card">
             <h2>📋 Mes Réservations</h2>
-            <div className="reservation-list" id="reservation-list">
+            <div className="reservation-list">
               {reservations.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#666' }}>Aucune réservation trouvée</p>
               ) : (
                 reservations.map(reservation => {
+                  const vehicle = vehicles.find(v => v.id === reservation.vehicleId);
                   const statusClass = `status-${reservation.status.toLowerCase()}`;
                   const statusText = {
                     'PENDING': 'En attente',
@@ -427,29 +408,11 @@ const VCubePSUserDashboard: React.FC = () => {
                     <div key={reservation.id} className="reservation-item">
                       <div className="reservation-info">
                         <h4>Réservation #{reservation.id.substring(0, 8)}</h4>
-                        <p><strong>Véhicule:</strong> {reservation.vehicleName}</p>
-                        <p><strong>Fournisseur:</strong> {reservation.providerName}</p>
+                        <p><strong>Véhicule:</strong> {vehicle?.name || vehicle?.make || 'Véhicule inconnu'}</p>
                         <p><strong>Siège:</strong> {reservation.seatId.substring(0, 8)}...</p>
                         <p><strong>Date:</strong> {new Date(reservation.createdAt).toLocaleDateString('fr-FR')}</p>
                       </div>
-                      <div>
-                        <span className={`status-badge ${statusClass}`}>{statusText}</span>
-                        {reservation.status === 'COMMITTED' && (
-                          <button 
-                            className="btn" 
-                            style={{ 
-                              marginTop: '0.5rem', 
-                              padding: '0.4rem 0.8rem', 
-                              fontSize: '0.8rem', 
-                              background: '#dc3545', 
-                              color: 'white' 
-                            }}
-                            onClick={() => cancelReservation(reservation.id)}
-                          >
-                            Annuler
-                          </button>
-                        )}
-                      </div>
+                      <span className={`status-badge ${statusClass}`}>{statusText}</span>
                     </div>
                   );
                 })
