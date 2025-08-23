@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './components/auth/Login'
 import AdminDashboard from './components/dashboard/NewAdminDashboard'
-import ProviderDashboard from './components/dashboard/NewProviderDashboard'
-import NewUserDashboard from './components/user/NewUserDashboard'
+import VCubePSProviderDashboard from './components/dashboard/VCubePSProviderDashboard'
+import VCubePSUserDashboard from './components/user/VCubePSUserDashboard'
 import ResearchDashboard from './components/research/ResearchDashboard'
 import PerformanceTestingLab from './components/research/PerformanceTestingLab'
 import VCubeRaftDemonstration from './components/research/VCubeRaftDemonstration'
@@ -91,7 +91,7 @@ function App() {
                 !isAuthenticated ? (
                   <Navigate to="/" replace />
                 ) : userRole === 'PROVIDER' ? (
-                  <ProviderDashboard />
+                  <VCubePSProviderDashboard />
                 ) : (
                   <Navigate to="/" replace />
                 )
@@ -104,7 +104,7 @@ function App() {
                 !isAuthenticated ? (
                   <Navigate to="/" replace />
                 ) : userRole === 'USER' ? (
-                  <NewUserDashboard />
+                  <VCubePSUserDashboard />
                 ) : (
                   <Navigate to="/" replace />
                 )
@@ -135,7 +135,7 @@ function App() {
                   userRole === 'provider' ? <Navigate to="/provider-dashboard" replace /> :
                   userRole === 'user' ? <Navigate to="/user-dashboard" replace /> :
                   userRole === 'researcher' ? <Navigate to="/research-dashboard" replace /> :
-                  <NewUserDashboard />
+                  <VCubePSUserDashboard />
                 )
               } 
             />
