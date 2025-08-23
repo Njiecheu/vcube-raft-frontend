@@ -706,6 +706,19 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  // Créer un nouveau siège
+  async createSeat(seatData: any): Promise<any> {
+    const response = await this.fetchWithFailover('/seats/', {
+      method: 'POST',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(seatData)
+    });
+    return this.handleResponse(response);
+  }
+
   // === MÉTHODES POUR L'ADMIN ===
 
   // Récupérer tous les utilisateurs (pour admin)
