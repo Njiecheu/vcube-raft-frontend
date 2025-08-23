@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { TEST_ACCOUNTS } from '../../data/testAccounts';
 import './Login.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -22,8 +23,23 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     const storedUserId = localStorage.getItem('userId');
     
     if (storedRole && storedUserId) {
-      // User is already logged in, redirect to dashboard
-      navigate('/dashboard');
+      // User is already logged in, redirect based on role
+      switch (storedRole) {
+        case 'admin':
+          navigate('/admin-dashboard');
+          break;
+        case 'provider':
+          navigate('/provider-dashboard');
+          break;
+        case 'user':
+          navigate('/user-dashboard');
+          break;
+        case 'researcher':
+          navigate('/research-dashboard');
+          break;
+        default:
+          navigate('/dashboard');
+      }
     }
   }, [navigate]);
 
@@ -294,6 +310,24 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               ...(alert.type === 'error' ? styles.alertError : styles.alertSuccess),
             }}>
               {alert.message}
+            </div>
+          )}
+
+          {/* Informations des comptes de test */}
+          {tab === 'login' && (
+            <div style={{ 
+              background: 'rgba(255,255,255,0.1)', 
+              padding: '1rem', 
+              borderRadius: '10px', 
+              marginBottom: '1.5rem',
+              border: '1px solid rgba(255,255,255,0.2)'
+            }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1rem' }}>🧪 Comptes de test disponibles :</h4>
+              <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.9)' }}>
+                <p style={{ margin: '0.25rem 0' }}><strong>👤 Utilisateur :</strong> raph@vcube.com / airline</p>
+                <p style={{ margin: '0.25rem 0' }}><strong>🏢 Fournisseur :</strong> prov2@vcube.com / airline</p>
+                <p style={{ margin: '0.25rem 0' }}><strong>🔧 Admin :</strong> admin@vcube.com / admin123</p>
+              </div>
             </div>
           )}
 

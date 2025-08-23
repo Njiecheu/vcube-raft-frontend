@@ -4,18 +4,21 @@ import './UserDashboard.css';
 
 interface Reservation {
   id: string;
+  userId: string;
   providerId: string;
+  vehicleId: string;
   seatId: string;
-  status: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
-  timestamp: string;
+  status: 'COMMITTED' | 'PENDING' | 'REJECTED' | 'CANCELLED';
+  createdAt: string;
   providerName?: string;
 }
 
 interface Provider {
   id: string;
   name: string;
-  location: string;
-  availableSeats: number;
+  email: string;
+  role: string;
+  phoneNumber?: string;
 }
 
 const UserDashboard: React.FC = () => {
@@ -175,19 +178,20 @@ const UserDashboard: React.FC = () => {
                         borderRadius: '12px',
                         fontSize: '0.8rem',
                         fontWeight: 600,
-                        background: reservation.status === 'CONFIRMED' ? '#d4edda' : 
+                        background: reservation.status === 'COMMITTED' ? '#d4edda' : 
                                    reservation.status === 'PENDING' ? '#fff3cd' : '#f8d7da',
-                        color: reservation.status === 'CONFIRMED' ? '#155724' :
+                        color: reservation.status === 'COMMITTED' ? '#155724' :
                                reservation.status === 'PENDING' ? '#856404' : '#721c24'
                       }}>
-                        {reservation.status === 'CONFIRMED' ? '✅ Confirmé' :
-                         reservation.status === 'PENDING' ? '⏳ En attente' : '❌ Annulé'}
+                        {reservation.status === 'COMMITTED' ? '✅ Confirmé' :
+                         reservation.status === 'PENDING' ? '⏳ En attente' :
+                         reservation.status === 'REJECTED' ? '❌ Rejeté' : '🚫 Annulé'}
                       </span>
                     </div>
                     <p style={{ fontSize: '0.8rem', color: '#999', marginBottom: '0.75rem' }}>
-                      {new Date(reservation.timestamp).toLocaleString()}
+                      {new Date(reservation.createdAt).toLocaleString()}
                     </p>
-                    {reservation.status === 'CONFIRMED' && (
+                    {reservation.status === 'COMMITTED' && (
                       <button
                         onClick={() => cancelReservation(reservation.id)}
                         disabled={loading}
@@ -232,7 +236,7 @@ const UserDashboard: React.FC = () => {
                 <option value="">-- Sélectionner un fournisseur --</option>
                 {providers.map((provider) => (
                   <option key={provider.id} value={provider.id}>
-                    {provider.name} ({provider.availableSeats} sièges disponibles)
+                    {provider.name} - {provider.email}
                   </option>
                 ))}
               </select>
@@ -279,7 +283,7 @@ const UserDashboard: React.FC = () => {
             <div style={{ background: '#e8f5e8', padding: '1rem', borderRadius: '8px' }}>
               <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#666', marginBottom: '0.5rem' }}>Confirmées</h3>
               <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#388e3c' }}>
-                {reservations.filter(r => r.status === 'CONFIRMED').length}
+                {reservations.filter(r => r.status === 'COMMITTED').length}
               </p>
             </div>
             <div style={{ background: '#fff8e1', padding: '1rem', borderRadius: '8px' }}>

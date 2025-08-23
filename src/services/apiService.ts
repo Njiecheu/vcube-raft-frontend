@@ -167,10 +167,12 @@ class ApiService {
   }
 
   private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('authToken');
+    const userId = localStorage.getItem('userId');
+    const userRole = localStorage.getItem('userRole');
     return {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
+      ...(userId && { 'X-User-Id': userId }),
+      ...(userRole && { 'X-User-Role': userRole })
     };
   }
 
@@ -400,10 +402,18 @@ class ApiService {
   // ============== RÉSERVATIONS ==============
 
   async getProviders() {
-    const response = await this.fetchWithFailover('/api/providers', {
-      headers: this.getAuthHeaders()
-    });
-    return this.handleResponse(response);
+    try {
+      const response = await this.fetchWithFailover('/api/providers', {
+        headers: this.getAuthHeaders()
+      });
+      return this.handleResponse(response);
+    } catch (error) {
+      console.warn('API providers endpoint not available, using test endpoint');
+      const response = await this.fetchWithFailover('/api/test/providers', {
+        headers: this.getAuthHeaders()
+      });
+      return this.handleResponse(response);
+    }
   }
 
   async getSeats(providerId: string) {
@@ -414,7 +424,7 @@ class ApiService {
   }
 
   async reserveSeat(reservationData: any) {
-    const response = await this.fetchWithFailover('/api/reservations', {
+    const response = await this.fetchWithFailover('/reservations/', {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(reservationData)
@@ -423,10 +433,21 @@ class ApiService {
   }
 
   async getUserReservations() {
-    const response = await this.fetchWithFailover('/api/reservations/user', {
-      headers: this.getAuthHeaders()
-    });
-    return this.handleResponse(response);
+    try {
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+      
+      const response = await this.fetchWithFailover(`/reservations/byUser/${userId}`, {
+        headers: this.getAuthHeaders()
+      });
+      return this.handleResponse(response);
+    } catch (error) {
+      console.warn('Erreur lors du chargement des réservations:', error);
+      // Retourner un tableau vide en cas d'erreur
+      return [];
+    }
   }
 
   async cancelReservation(reservationId: string) {
@@ -440,10 +461,18 @@ class ApiService {
   // ============== ADMIN ==============
 
   async getAdminStats() {
-    const response = await this.fetchWithFailover('/api/admin/stats', {
-      headers: this.getAuthHeaders()
-    });
-    return this.handleResponse(response);
+    try {
+      const response = await this.fetchWithFailover('/api/admin/stats', {
+        headers: this.getAuthHeaders()
+      });
+      return this.handleResponse(response);
+    } catch (error) {
+      console.warn('Admin stats endpoint not available, using test stats');
+      const response = await this.fetchWithFailover('/api/test/stats', {
+        headers: this.getAuthHeaders()
+      });
+      return this.handleResponse(response);
+    }
   }
 
   async getReservationsByHour() {

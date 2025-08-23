@@ -87,7 +87,11 @@ function App() {
               path="/" 
               element={
                 isAuthenticated ? 
-                  <Navigate to="/demonstration" replace /> : 
+                  (userRole === 'admin' ? <Navigate to="/admin-dashboard" replace /> :
+                   userRole === 'provider' ? <Navigate to="/provider-dashboard" replace /> :
+                   userRole === 'user' ? <Navigate to="/user-dashboard" replace /> :
+                   userRole === 'researcher' ? <Navigate to="/research-dashboard" replace /> :
+                   <Navigate to="/dashboard" replace />) : 
                   <Login onLogin={handleLogin} />
               } 
             />
@@ -95,7 +99,11 @@ function App() {
               path="/login" 
               element={
                 isAuthenticated ? 
-                  <Navigate to="/demonstration" replace /> : 
+                  (userRole === 'admin' ? <Navigate to="/admin-dashboard" replace /> :
+                   userRole === 'provider' ? <Navigate to="/provider-dashboard" replace /> :
+                   userRole === 'user' ? <Navigate to="/user-dashboard" replace /> :
+                   userRole === 'researcher' ? <Navigate to="/research-dashboard" replace /> :
+                   <Navigate to="/dashboard" replace />) : 
                   <Login onLogin={handleLogin} />
               } 
             />
