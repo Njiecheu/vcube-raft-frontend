@@ -76,6 +76,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       });
       const result = await response.json();
       if (response.ok && result.success) {
+        // Stocker les données utilisateur sous forme d'objet
+        const userData = {
+          id: result.userId,
+          email: loginData.email,
+          role: result.role,
+          name: result.userName || loginData.email
+        };
+        
+        localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('userRole', result.role);
         localStorage.setItem('userId', result.userId);
         localStorage.setItem('userName', result.userName || loginData.email);
@@ -86,16 +95,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         
         // Rediriger en fonction du rôle
         switch (result.role) {
-          case 'admin':
+          case 'ADMIN':
             navigate('/admin-dashboard');
             break;
-          case 'provider':
+          case 'PROVIDER':
             navigate('/provider-dashboard');
             break;
-          case 'user':
+          case 'USER':
             navigate('/user-dashboard');
             break;
-          case 'researcher':
+          case 'RESEARCHER':
             navigate('/research-dashboard');
             break;
           default:

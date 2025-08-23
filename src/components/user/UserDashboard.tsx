@@ -36,9 +36,15 @@ const UserDashboard: React.FC = () => {
   const loadUserData = async () => {
     try {
       setLoading(true);
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        setError('Utilisateur non connecté');
+        return;
+      }
+      
       const [userReservations, availableProviders] = await Promise.all([
-        apiService.getUserReservations(),
-        apiService.getProviders()
+        apiService.getUserReservations(userId),
+        apiService.getAllProviders()
       ]);
       
       setReservations(Array.isArray(userReservations) ? userReservations : []);

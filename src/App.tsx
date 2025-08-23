@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
 import Login from './components/auth/Login'
-import AdminDashboard from './components/dashboard/AdminDashboard'
+import AdminDashboard from './components/dashboard/NewAdminDashboard'
 import ProviderDashboard from './components/dashboard/NewProviderDashboard'
 import UserDashboard from './components/user/NewUserDashboard'
 import ResearchDashboard from './components/research/ResearchDashboard'
@@ -87,10 +87,10 @@ function App() {
               path="/" 
               element={
                 isAuthenticated ? 
-                  (userRole === 'admin' ? <Navigate to="/admin-dashboard" replace /> :
-                   userRole === 'provider' ? <Navigate to="/provider-dashboard" replace /> :
-                   userRole === 'user' ? <Navigate to="/user-dashboard" replace /> :
-                   userRole === 'researcher' ? <Navigate to="/research-dashboard" replace /> :
+                  (userRole === 'ADMIN' ? <Navigate to="/admin-dashboard" replace /> :
+                   userRole === 'PROVIDER' ? <Navigate to="/provider-dashboard" replace /> :
+                   userRole === 'USER' ? <Navigate to="/user-dashboard" replace /> :
+                   userRole === 'RESEARCHER' ? <Navigate to="/research-dashboard" replace /> :
                    <Navigate to="/dashboard" replace />) : 
                   <Login onLogin={handleLogin} />
               } 
@@ -99,10 +99,10 @@ function App() {
               path="/login" 
               element={
                 isAuthenticated ? 
-                  (userRole === 'admin' ? <Navigate to="/admin-dashboard" replace /> :
-                   userRole === 'provider' ? <Navigate to="/provider-dashboard" replace /> :
-                   userRole === 'user' ? <Navigate to="/user-dashboard" replace /> :
-                   userRole === 'researcher' ? <Navigate to="/research-dashboard" replace /> :
+                  (userRole === 'ADMIN' ? <Navigate to="/admin-dashboard" replace /> :
+                   userRole === 'PROVIDER' ? <Navigate to="/provider-dashboard" replace /> :
+                   userRole === 'USER' ? <Navigate to="/user-dashboard" replace /> :
+                   userRole === 'RESEARCHER' ? <Navigate to="/research-dashboard" replace /> :
                    <Navigate to="/dashboard" replace />) : 
                   <Login onLogin={handleLogin} />
               } 
@@ -114,7 +114,7 @@ function App() {
               element={
                 !isAuthenticated ? (
                   <Navigate to="/" replace />
-                ) : userRole === 'admin' ? (
+                ) : userRole === 'ADMIN' ? (
                   <AdminDashboard />
                 ) : (
                   <Navigate to="/" replace />
@@ -127,7 +127,7 @@ function App() {
               element={
                 !isAuthenticated ? (
                   <Navigate to="/" replace />
-                ) : userRole === 'provider' ? (
+                ) : userRole === 'PROVIDER' ? (
                   <ProviderDashboard />
                 ) : (
                   <Navigate to="/" replace />
@@ -140,7 +140,7 @@ function App() {
               element={
                 !isAuthenticated ? (
                   <Navigate to="/" replace />
-                ) : userRole === 'user' ? (
+                ) : userRole === 'USER' ? (
                   <UserDashboard />
                 ) : (
                   <Navigate to="/" replace />
@@ -153,7 +153,7 @@ function App() {
               element={
                 !isAuthenticated ? (
                   <Navigate to="/" replace />
-                ) : userRole === 'researcher' ? (
+                ) : userRole === 'RESEARCHER' ? (
                   <ResearchDashboard />
                 ) : (
                   <Navigate to="/" replace />

@@ -12,20 +12,20 @@ interface User {
 interface Vehicle {
   id: string;
   name: string;
-  type: string;
   capacity: number;
+  make: string;
+  model: string;
+  licensePlate: string;
   providerId: string;
-  status: 'PUBLISHED' | 'DRAFT';
-  createdAt: string;
+  published: boolean;
   seats?: Seat[];
 }
 
 interface Seat {
   id: string;
-  seatNumber: string;
   vehicleId: string;
-  isReserved: boolean;
-  reservationId?: string;
+  label: string;
+  available: boolean;
 }
 
 interface VehicleStats {
@@ -90,7 +90,7 @@ const NewProviderDashboard: React.FC = () => {
         const seats = await apiService.getVehicleSeats(vehicle.id);
         
         const totalSeats = vehicle.capacity;
-        const reservedSeats = (seats as Seat[]).filter(seat => seat.isReserved).length;
+        const reservedSeats = (seats as Seat[]).filter(seat => !seat.available).length;
         const availableSeats = totalSeats - reservedSeats;
 
         statsMap.set(vehicle.id, {
@@ -178,8 +178,8 @@ const NewProviderDashboard: React.FC = () => {
 
   const getDashboardStats = () => {
     const totalVehicles = vehicles.length;
-    const publishedVehicles = vehicles.filter(v => v.status === 'PUBLISHED').length;
-    const draftVehicles = vehicles.filter(v => v.status === 'DRAFT').length;
+    const publishedVehicles = vehicles.filter(v => v.published).length;
+    const draftVehicles = vehicles.filter(v => !v.published).length;
     
     let totalSeats = 0;
     let totalReserved = 0;
@@ -383,11 +383,11 @@ const NewProviderDashboard: React.FC = () => {
                     <div className="vehicle-header">
                       <div className="vehicle-info">
                         <h3>{vehicle.name}</h3>
-                        <p className="vehicle-type">{vehicle.type}</p>
+                        <p className="vehicle-type">{vehicle.make} {vehicle.model}</p>
                       </div>
                       <div className="vehicle-status">
-                        <span className={`status-badge ${vehicle.status.toLowerCase()}`}>
-                          {vehicle.status === 'PUBLISHED' ? '✅ Publié' : '📝 Brouillon'}
+                        <span className={`status-badge ${vehicle.published ? 'published' : 'draft'}`}>
+                          {vehicle.published ? '✅ Publié' : '📝 Brouillon'}
                         </span>
                       </div>
                     </div>
@@ -426,7 +426,7 @@ const NewProviderDashboard: React.FC = () => {
                     </div>
 
                     <div className="vehicle-actions">
-                      {vehicle.status === 'DRAFT' ? (
+                      {!vehicle.published ? (
                         <button
                           onClick={() => handlePublishVehicle(vehicle.id, 'PUBLISHED')}
                           className="publish-btn"
@@ -451,7 +451,7 @@ const NewProviderDashboard: React.FC = () => {
                     </div>
 
                     <div className="vehicle-meta">
-                      <p>Créé le: {new Date(vehicle.createdAt).toLocaleDateString('fr-FR')}</p>
+                      <p>Plaque: {vehicle.licensePlate}</p>
                     </div>
                   </div>
                 );

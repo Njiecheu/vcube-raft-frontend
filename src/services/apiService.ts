@@ -401,59 +401,11 @@ class ApiService {
 
   // ============== RÉSERVATIONS ==============
 
-  async getProviders() {
-    try {
-      const response = await this.fetchWithFailover('/api/providers', {
-        headers: this.getAuthHeaders()
-      });
-      return this.handleResponse(response);
-    } catch (error) {
-      console.warn('API providers endpoint not available, using test endpoint');
-      const response = await this.fetchWithFailover('/api/test/providers', {
-        headers: this.getAuthHeaders()
-      });
-      return this.handleResponse(response);
-    }
-  }
-
-  async getSeats(providerId: string) {
-    const response = await this.fetchWithFailover(`/api/providers/${providerId}/seats`, {
-      headers: this.getAuthHeaders()
-    });
-    return this.handleResponse(response);
-  }
-
   async reserveSeat(reservationData: any) {
     const response = await this.fetchWithFailover('/reservations/', {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(reservationData)
-    });
-    return this.handleResponse(response);
-  }
-
-  async getUserReservations() {
-    try {
-      const userId = localStorage.getItem('userId');
-      if (!userId) {
-        throw new Error('User not authenticated');
-      }
-      
-      const response = await this.fetchWithFailover(`/reservations/byUser/${userId}`, {
-        headers: this.getAuthHeaders()
-      });
-      return this.handleResponse(response);
-    } catch (error) {
-      console.warn('Erreur lors du chargement des réservations:', error);
-      // Retourner un tableau vide en cas d'erreur
-      return [];
-    }
-  }
-
-  async cancelReservation(reservationId: string) {
-    const response = await this.fetchWithFailover(`/api/reservations/${reservationId}`, {
-      method: 'DELETE',
-      headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
@@ -556,9 +508,27 @@ class ApiService {
 
   // === MÉTHODES POUR LE DASHBOARD FOURNISSEUR ===
 
-  // Récupérer les véhicules d'un fournisseur
+  // Récupérer tous les véhicules
+  async getAllVehicles(): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/integrated/vehicles', {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Récupérer tous les fournisseurs
+  async getAllProviders(): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/integrated/providers', {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Récupérer les véhicules d'un fournisseur par providerId
   async getProviderVehicles(providerId: string): Promise<unknown> {
-    const response = await this.fetchWithFailover('/api/vehicles/provider/' + providerId, {
+    const response = await this.fetchWithFailover('/api/integrated/providers/' + providerId + '/vehicles', {
       method: 'GET',
       headers: this.getAuthHeaders()
     });
@@ -567,65 +537,144 @@ class ApiService {
 
   // Créer un nouveau véhicule
   async createVehicle(vehicleData: any): Promise<any> {
-    const response = await this.fetchWithFailover('/api/vehicles', {
+    const response = await this.fetchWithFailover('/api/integrated/vehicles', {
       method: 'POST',
       headers: {
         ...this.getAuthHeaders(),
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(vehicleData)
+      body: JSON.stringify({
+        name: vehicleData.name,
+        capacity: vehicleData.capacity,
+        providerId: vehicleData.providerId,
+        make: vehicleData.type, // Mapping type -> make
+        model: vehicleData.type,
+        licensePlate: vehicleData.name + '-' + Math.random().toString(36).substr(2, 3).toUpperCase(),
+        published: vehicleData.status === 'PUBLISHED'
+      })
     });
     return this.handleResponse(response);
   }
 
   // Récupérer les sièges d'un véhicule
   async getVehicleSeats(vehicleId: string): Promise<unknown> {
-    const response = await this.fetchWithFailover('/api/vehicles/' + vehicleId + '/seats', {
+    const response = await this.fetchWithFailover('/api/integrated/vehicles/' + vehicleId + '/seats', {
       method: 'GET',
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
-  // Créer les sièges pour un véhicule
-  async createVehicleSeats(vehicleId: string, capacity: number): Promise<unknown> {
-    const response = await this.fetchWithFailover('/api/vehicles/' + vehicleId + '/seats', {
-      method: 'POST',
-      headers: {
-        ...this.getAuthHeaders(),
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ capacity })
-    });
-    return this.handleResponse(response);
-  }
-
-  // Récupérer les réservations d'un véhicule
-  async getVehicleReservations(vehicleId: string): Promise<unknown> {
-    const response = await this.fetchWithFailover('/api/vehicles/' + vehicleId + '/reservations', {
-      method: 'GET',
-      headers: this.getAuthHeaders()
-    });
-    return this.handleResponse(response);
-  }
-
-  // Mettre à jour le statut d'un véhicule
+  // Publier/Dépublier un véhicule
   async updateVehicleStatus(vehicleId: string, status: string): Promise<unknown> {
-    const response = await this.fetchWithFailover('/api/vehicles/' + vehicleId + '/status', {
-      method: 'PUT',
-      headers: {
-        ...this.getAuthHeaders(),
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ status })
+    const endpoint = status === 'PUBLISHED' ? 'publish' : 'unpublish';
+    const response = await this.fetchWithFailover('/api/integrated/vehicles/' + vehicleId + '/' + endpoint, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
 
   // Supprimer un véhicule
   async deleteVehicle(vehicleId: string): Promise<unknown> {
-    const response = await this.fetchWithFailover('/api/vehicles/' + vehicleId, {
+    const response = await this.fetchWithFailover('/api/integrated/vehicles/' + vehicleId, {
       method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Créer les sièges pour un véhicule (non nécessaire car fait automatiquement par le backend)
+  async createVehicleSeats(_vehicleId: string, _capacity: number): Promise<unknown> {
+    // Cette méthode n'est plus nécessaire car le backend crée automatiquement les sièges
+    // lors de la création du véhicule
+    return Promise.resolve();
+  }
+
+  // Récupérer tous les providers (pour le user dashboard)
+  async getProviders(): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/integrated/providers', {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Récupérer tous les véhicules (pour le user dashboard)
+  async getVehicles(): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/integrated/vehicles', {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Récupérer les sièges d'un véhicule (pour le user dashboard)
+  async getSeats(vehicleId: string): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/integrated/vehicles/' + vehicleId + '/seats', {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // === MÉTHODES POUR LES RÉSERVATIONS ===
+
+  // Récupérer les réservations d'un utilisateur
+  async getUserReservations(userId: string): Promise<unknown> {
+    const response = await this.fetchWithFailover('/reservations/byUser/' + userId, {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Créer une nouvelle réservation
+  async createReservation(reservationData: any): Promise<any> {
+    const response = await this.fetchWithFailover('/reservations/', {
+      method: 'POST',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(reservationData)
+    });
+    return this.handleResponse(response);
+  }
+
+  // Annuler une réservation
+  async cancelReservation(reservationId: string): Promise<unknown> {
+    const response = await this.fetchWithFailover('/reservations/' + reservationId + '/cancel', {
+      method: 'PUT',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Supprimer une réservation
+  async deleteReservation(reservationId: string): Promise<unknown> {
+    const response = await this.fetchWithFailover('/reservations/' + reservationId, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // === MÉTHODES POUR L'ADMIN ===
+
+  // Récupérer tous les utilisateurs (pour admin)
+  async getAllUsers(): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/admin/users', {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Récupérer toutes les réservations (pour admin)
+  async getAllReservations(): Promise<unknown> {
+    const response = await this.fetchWithFailover('/reservations/', {
+      method: 'GET',
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);

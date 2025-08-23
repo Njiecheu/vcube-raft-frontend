@@ -19,9 +19,8 @@ interface Vehicle {
 interface Seat {
   id: string;
   vehicleId: string;
-  seatNumber: number;
+  label: string;
   available: boolean;
-  reserved?: boolean;
 }
 
 interface Provider {
@@ -85,7 +84,7 @@ const NewUserDashboard: React.FC = () => {
         (vehiclesData as Vehicle[]).map(async (vehicle: Vehicle) => {
           const seats = await loadSeats(vehicle.id);
           const provider = (providersData as Provider[]).find((p: Provider) => p.id === vehicle.providerId);
-          return { ...vehicle, seats, provider };
+          return { ...vehicle, seats: seats as Seat[], provider };
         })
       );
       
@@ -100,58 +99,37 @@ const NewUserDashboard: React.FC = () => {
 
   const loadProviders = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/test/providers`);
-      return await response.json();
+      return await apiService.getAllProviders();
     } catch (error) {
-      console.error('Erreur providers:', error);
-      return [];
+      console.error('Erreur chargement providers:', error);
+      throw error;
     }
   };
 
   const loadVehicles = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/test/vehicles`);
-      return await response.json();
+      return await apiService.getAllVehicles();
     } catch (error) {
-      console.error('Erreur vehicles:', error);
-      return [];
+      console.error('Erreur chargement vehicles:', error);
+      throw error;
     }
   };
 
   const loadSeats = async (vehicleId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vehicles/${vehicleId}/seats`);
-      if (!response.ok) {
-        // Générer des sièges mock si l'API n'existe pas
-        const vehicle = vehicles.find(v => v.id === vehicleId);
-        const capacity = vehicle?.capacity || 10;
-        return Array.from({ length: capacity }, (_, index) => ({
-          id: `seat-${vehicleId}-${index + 1}`,
-          vehicleId,
-          seatNumber: index + 1,
-          available: Math.random() > 0.3, // 70% de chance d'être disponible
-          reserved: false
-        }));
-      }
-      return await response.json();
+      return await apiService.getVehicleSeats(vehicleId);
     } catch (error) {
-      console.error('Erreur seats:', error);
-      // Générer des sièges mock
-      return Array.from({ length: 10 }, (_, index) => ({
-        id: `seat-${vehicleId}-${index + 1}`,
-        vehicleId,
-        seatNumber: index + 1,
-        available: Math.random() > 0.3,
-        reserved: false
-      }));
+      console.error('Erreur chargement seats:', error);
+      return [];
     }
   };
 
   const loadUserReservations = async () => {
+    if (!userId) return [];
     try {
-      return await apiService.getUserReservations();
+      return await apiService.getUserReservations(userId);
     } catch (error) {
-      console.error('Erreur réservations:', error);
+      console.error('Erreur chargement réservations:', error);
       return [];
     }
   };
@@ -258,7 +236,7 @@ const NewUserDashboard: React.FC = () => {
   };
 
   const getSeatLabel = (seat: Seat) => {
-    return `S${seat.seatNumber}`;
+    return seat.label;
   };
 
   const filteredVehicles = selectedProvider 
@@ -377,7 +355,7 @@ const NewUserDashboard: React.FC = () => {
                       style={{ backgroundColor: getSeatColor(seat) }}
                       onClick={() => seat.available ? setSelectedSeat(seat.id) : null}
                       disabled={!seat.available || loading}
-                      title={`Siège ${seat.seatNumber} - ${seat.available ? 'Disponible' : 'Occupé'}`}
+                      title={`Siège ${seat.label} - ${seat.available ? 'Disponible' : 'Occupé'}`}
                     >
                       {getSeatLabel(seat)}
                     </button>
