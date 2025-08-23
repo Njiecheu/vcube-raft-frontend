@@ -101,16 +101,25 @@ const VCubePSUserDashboard: React.FC = () => {
       setLoading(true);
       setError('');
       
+      console.log('Chargement des véhicules et fournisseurs...');
+      
       const [vehiclesData, providersData] = await Promise.all([
         apiService.getAllVehicles(),
         apiService.getAllProviders()
       ]);
 
-      setVehicles(vehiclesData as Vehicle[]);
+      console.log('Véhicules reçus:', vehiclesData);
+      console.log('Fournisseurs reçus:', providersData);
+
+      // Filtrer uniquement les véhicules publiés
+      const publishedVehicles = (vehiclesData as Vehicle[]).filter(vehicle => vehicle.published);
+      console.log('Véhicules publiés:', publishedVehicles);
+
+      setVehicles(publishedVehicles);
       setProviders(providersData as Provider[]);
     } catch (err) {
       console.error('Erreur lors du chargement des véhicules:', err);
-      setError('Erreur lors du chargement des véhicules');
+      setError('Erreur lors du chargement des véhicules: ' + (err instanceof Error ? err.message : 'Erreur inconnue'));
     } finally {
       setLoading(false);
     }
@@ -224,23 +233,6 @@ const VCubePSUserDashboard: React.FC = () => {
     }
   };
 
-  // Grouper véhicules par fournisseur
-  const getGroupedVehicles = () => {
-    const grouped: { [key: string]: { provider: Provider; vehicles: Vehicle[] } } = {};
-    
-    vehicles.forEach(vehicle => {
-      const provider = providers.find(p => p.id === vehicle.providerId);
-      if (provider) {
-        if (!grouped[provider.id]) {
-          grouped[provider.id] = { provider, vehicles: [] };
-        }
-        grouped[provider.id].vehicles.push(vehicle);
-      }
-    });
-    
-    return grouped;
-  };
-
   // Gérer la sélection de véhicule
   const handleVehicleSelection = (vehicleId: string) => {
     setSelectedVehicleId(vehicleId);
@@ -251,8 +243,6 @@ const VCubePSUserDashboard: React.FC = () => {
       setTimeout(() => loadSeats(), 100);
     }
   };
-
-  const groupedVehicles = getGroupedVehicles();
 
   if (loading) {
     return (
@@ -291,31 +281,37 @@ const VCubePSUserDashboard: React.FC = () => {
                 onChange={(e) => handleVehicleSelection(e.target.value)}
               >
                 <option value="">Sélectionnez un véhicule</option>
-                {Object.values(groupedVehicles).map(({ provider, vehicles: providerVehicles }) => (
-                  <optgroup key={provider.id} label={provider.name || provider.companyName || 'Fournisseur'}>
-                    {providerVehicles.map(vehicle => {
-                      let vehicleDisplay = vehicle.name || 'Véhicule';
-                      if (vehicle.make && vehicle.model) {
-                        vehicleDisplay = `${vehicle.make} ${vehicle.model}`;
-                      } else if (vehicle.make) {
-                        vehicleDisplay = vehicle.make;
-                      } else if (vehicle.model) {
-                        vehicleDisplay = vehicle.model;
-                      }
-                      
-                      if (vehicle.licensePlate) {
-                        vehicleDisplay += ` (${vehicle.licensePlate})`;
-                      }
+                {/* Debug: Afficher tous les véhicules sans groupement d'abord */}
+                {vehicles.filter(vehicle => vehicle.published).map(vehicle => {
+                  const provider = providers.find(p => p.id === vehicle.providerId);
+                  let vehicleDisplay = vehicle.name || 'Véhicule';
+                  if (vehicle.make && vehicle.model) {
+                    vehicleDisplay = `${vehicle.make} ${vehicle.model}`;
+                  } else if (vehicle.make) {
+                    vehicleDisplay = vehicle.make;
+                  } else if (vehicle.model) {
+                    vehicleDisplay = vehicle.model;
+                  }
+                  
+                  if (vehicle.licensePlate) {
+                    vehicleDisplay += ` (${vehicle.licensePlate})`;
+                  }
+                  
+                  // Ajouter le nom du fournisseur
+                  const providerName = provider?.name || provider?.companyName || 'Fournisseur inconnu';
+                  vehicleDisplay = `${providerName} - ${vehicleDisplay}`;
 
-                      return (
-                        <option key={vehicle.id} value={vehicle.id}>
-                          {vehicleDisplay}
-                        </option>
-                      );
-                    })}
-                  </optgroup>
-                ))}
+                  return (
+                    <option key={vehicle.id} value={vehicle.id}>
+                      {vehicleDisplay}
+                    </option>
+                  );
+                })}
               </select>
+              {/* Debug info */}
+              <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#666' }}>
+                Debug: {vehicles.length} véhicules totaux, {providers.length} fournisseurs
+              </div>
             </div>
             
             {selectedVehicleId && (
