@@ -553,6 +553,83 @@ class ApiService {
     console.log('🔄 Réinitialisation de l\'état des nœuds défaillants');
     this.failedNodes.clear();
   }
+
+  // === MÉTHODES POUR LE DASHBOARD FOURNISSEUR ===
+
+  // Récupérer les véhicules d'un fournisseur
+  async getProviderVehicles(providerId: string): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/vehicles/provider/' + providerId, {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Créer un nouveau véhicule
+  async createVehicle(vehicleData: any): Promise<any> {
+    const response = await this.fetchWithFailover('/api/vehicles', {
+      method: 'POST',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(vehicleData)
+    });
+    return this.handleResponse(response);
+  }
+
+  // Récupérer les sièges d'un véhicule
+  async getVehicleSeats(vehicleId: string): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/vehicles/' + vehicleId + '/seats', {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Créer les sièges pour un véhicule
+  async createVehicleSeats(vehicleId: string, capacity: number): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/vehicles/' + vehicleId + '/seats', {
+      method: 'POST',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ capacity })
+    });
+    return this.handleResponse(response);
+  }
+
+  // Récupérer les réservations d'un véhicule
+  async getVehicleReservations(vehicleId: string): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/vehicles/' + vehicleId + '/reservations', {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Mettre à jour le statut d'un véhicule
+  async updateVehicleStatus(vehicleId: string, status: string): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/vehicles/' + vehicleId + '/status', {
+      method: 'PUT',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status })
+    });
+    return this.handleResponse(response);
+  }
+
+  // Supprimer un véhicule
+  async deleteVehicle(vehicleId: string): Promise<unknown> {
+    const response = await this.fetchWithFailover('/api/vehicles/' + vehicleId, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
 }
 
 // Instance singleton
