@@ -181,7 +181,29 @@ class ApiService {
       const errorText = await response.text();
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-    return response.json();
+    
+    // Vérifier le Content-Type pour détecter les réponses non-JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      const responseText = await response.text();
+      console.error('❌ Réponse non-JSON reçue:', {
+        url: response.url,
+        contentType,
+        text: responseText.substring(0, 200) + '...'
+      });
+      throw new Error(`Réponse non-JSON reçue. Content-Type: ${contentType}`);
+    }
+    
+    try {
+      return await response.json();
+    } catch (error) {
+      const responseText = await response.text();
+      console.error('❌ Erreur de parsing JSON:', {
+        url: response.url,
+        text: responseText.substring(0, 200) + '...'
+      });
+      throw new Error(`Impossible de parser la réponse JSON: ${error}`);
+    }
   }
 
   // ============== AUTHENTIFICATION ==============
