@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/apiService';
-import './UserDashboard.css';
+import './NewUserDashboard.css';
 
 interface Vehicle {
   id: string;
@@ -40,6 +40,8 @@ interface Reservation {
   seatId: string;
   status: 'COMMITTED' | 'PENDING' | 'REJECTED' | 'CANCELLED';
   createdAt: string;
+  vehicleName?: string;
+  providerName?: string;
 }
 
 const NewUserDashboard: React.FC = () => {
@@ -47,83 +49,104 @@ const NewUserDashboard: React.FC = () => {
   
   // États principaux
   const [providers, setProviders] = useState<Provider[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
   const [seats, setSeats] = useState<Seat[]>([]);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'providers' | 'reservations'>('providers');
 
   const userName = localStorage.getItem('userName') || 'Utilisateur';
   const userId = localStorage.getItem('userId');
 
   useEffect(() => {
-    loadInitialData();
+    loadAllData();
   }, []);
 
-  // Charger les données initiales
-  const loadInitialData = async () => {
+  // Charger toutes les données initiales
+  const loadAllData = async () => {
     try {
       setLoading(true);
       setError('');
       
-      const [providersData, userReservations] = await Promise.all([
+      const [providersData, vehiclesData, userReservations] = await Promise.all([
         apiService.getAllProviders(),
+        apiService.getAllVehicles(), 
         userId ? apiService.getUserReservations(userId) : Promise.resolve([])
       ]);
 
       setProviders(providersData as Provider[]);
-      setReservations(userReservations as Reservation[]);
+      
+      // Filtrer seulement les véhicules publiés
+      const publishedVehicles = (vehiclesData as Vehicle[]).filter(v => v.published);
+      setVehicles(publishedVehicles);
+      
+      // Enrichir les réservations avec noms des véhicules et providers
+      const enrichedReservations = (userReservations as Reservation[]).map(reservation => {
+        const vehicle = (vehiclesData as Vehicle[]).find(v => v.id === reservation.vehicleId);
+        const provider = (providersData as Provider[]).find(p => p.id === reservation.providerId);
+        return {
+          ...reservation,
+          vehicleName: vehicle?.name || 'Véhicule inconnu',
+          providerName: provider?.name || 'Fournisseur inconnu'
+        };
+      });
+      
+      setReservations(enrichedReservations);
     } catch (err) {
-      setError('Erreur lors du chargement des données');
       console.error('Erreur chargement données:', err);
+      setError('Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
   };
 
-  // Charger les véhicules d'un fournisseur
-  const loadProviderVehicles = async (provider: Provider) => {
-    try {
-      setError('');
-      setSelectedProvider(provider);
-      setSelectedVehicle(null);
+  // Charger les sièges quand un véhicule est sélectionné
+  const handleVehicleSelection = async (vehicleId: string) => {
+    if (!vehicleId) {
       setSeats([]);
       setSelectedSeats([]);
-
-      const allVehicles = await apiService.getAllVehicles();
-      const providerVehicles = (allVehicles as Vehicle[]).filter(
-        vehicle => vehicle.providerId === provider.id && vehicle.published
-      );
-      
-      setVehicles(providerVehicles);
-    } catch (err) {
-      setError('Erreur lors du chargement des véhicules');
-      console.error('Erreur chargement véhicules:', err);
+      setSelectedVehicleId('');
+      return;
     }
-  };
 
-  // Charger les sièges d'un véhicule
-  const loadVehicleSeats = async (vehicle: Vehicle) => {
     try {
       setError('');
-      setSelectedVehicle(vehicle);
+      setSelectedVehicleId(vehicleId);
       setSelectedSeats([]);
-
-      const vehicleSeats = await apiService.getVehicleSeats(vehicle.id);
-      setSeats(vehicleSeats as Seat[]);
+      
+      const vehicleSeats = await apiService.getVehicleSeats(vehicleId);
+      const seatsData = vehicleSeats as Seat[];
+      
+      // Si pas de sièges dans la DB, créer des sièges par défaut
+      if (seatsData.length === 0) {
+        const selectedVehicle = vehicles.find(v => v.id === vehicleId);
+        const capacity = selectedVehicle?.capacity || selectedVehicle?.seatCount || 0;
+        
+        const defaultSeats = Array.from({ length: capacity }, (_, index) => ({
+          id: `default-seat-${vehicleId}-${index + 1}`,
+          vehicleId: vehicleId,
+          label: `S${index + 1}`,
+          seatNumber: `S${index + 1}`,
+          available: true,
+          isReserved: false
+        }));
+        
+        setSeats(defaultSeats);
+      } else {
+        setSeats(seatsData);
+      }
     } catch (err) {
-      setError('Erreur lors du chargement des sièges');
       console.error('Erreur chargement sièges:', err);
+      setError('Erreur lors du chargement des sièges');
     }
   };
 
   // Gérer la sélection des sièges
-  const toggleSeatSelection = (seatId: string, isReserved: boolean) => {
-    if (isReserved) return;
+  const toggleSeatSelection = (seatId: string) => {
+    const seat = seats.find(s => s.id === seatId);
+    if (!seat || !seat.available || seat.isReserved) return;
 
     setSelectedSeats(prev => {
       if (prev.includes(seatId)) {
@@ -136,7 +159,7 @@ const NewUserDashboard: React.FC = () => {
 
   // Effectuer une réservation
   const makeReservation = async () => {
-    if (!selectedVehicle || selectedSeats.length === 0 || !userId) {
+    if (!selectedVehicleId || selectedSeats.length === 0 || !userId) {
       setError('Veuillez sélectionner des sièges');
       return;
     }
@@ -147,7 +170,7 @@ const NewUserDashboard: React.FC = () => {
       for (const seatId of selectedSeats) {
         await apiService.createReservation({
           userId,
-          vehicleId: selectedVehicle.id,
+          vehicleId: selectedVehicleId,
           seatId,
           status: 'COMMITTED'
         });
@@ -156,13 +179,12 @@ const NewUserDashboard: React.FC = () => {
       alert(`Réservation confirmée pour ${selectedSeats.length} siège(s) !`);
       
       // Recharger les données
-      await loadInitialData();
-      await loadVehicleSeats(selectedVehicle);
-      setSelectedSeats([]);
+      await loadAllData();
+      await handleVehicleSelection(selectedVehicleId);
       
     } catch (err) {
-      setError('Erreur lors de la réservation');
       console.error('Erreur réservation:', err);
+      setError('Erreur lors de la réservation');
     }
   };
 
@@ -174,14 +196,15 @@ const NewUserDashboard: React.FC = () => {
 
     try {
       await apiService.cancelReservation(reservationId);
-      await loadInitialData();
+      await loadAllData();
       
-      if (selectedVehicle) {
-        await loadVehicleSeats(selectedVehicle);
+      // Recharger les sièges si un véhicule est sélectionné
+      if (selectedVehicleId) {
+        await handleVehicleSelection(selectedVehicleId);
       }
     } catch (err) {
-      setError('Erreur lors de l\'annulation');
       console.error('Erreur annulation:', err);
+      setError('Erreur lors de l\'annulation');
     }
   };
 
@@ -193,10 +216,10 @@ const NewUserDashboard: React.FC = () => {
 
     try {
       await apiService.deleteReservation(reservationId);
-      await loadInitialData();
+      await loadAllData();
     } catch (err) {
-      setError('Erreur lors de la suppression');
       console.error('Erreur suppression:', err);
+      setError('Erreur lors de la suppression');
     }
   };
 
@@ -206,104 +229,42 @@ const NewUserDashboard: React.FC = () => {
     navigate('/');
   };
 
-  // Rendu de la grille de sièges
-  const renderSeatGrid = () => {
-    if (!selectedVehicle) {
-      return (
-        <div className="seat-grid-placeholder">
-          <p>Sélectionnez un véhicule pour voir les sièges disponibles</p>
-        </div>
-      );
-    }
-
-    // Si pas de sièges chargés, créer des sièges par défaut
-    const seatsToRender = seats.length > 0 ? seats : 
-      Array.from({ length: selectedVehicle.capacity || selectedVehicle.seatCount || 0 }, (_, index) => ({
-        id: `seat-${index + 1}`,
-        vehicleId: selectedVehicle.id,
-        label: `S${index + 1}`,
-        seatNumber: `S${index + 1}`,
-        available: true,
-        isReserved: false
-      }));
-
-    const seatsPerRow = 4;
-    const rows = Math.ceil(seatsToRender.length / seatsPerRow);
+  // Grouper véhicules par fournisseur pour le select
+  const getGroupedVehicles = () => {
+    const grouped: { [key: string]: { provider: Provider; vehicles: Vehicle[] } } = {};
     
-    return (
-      <div className="seat-grid">
-        <div className="seat-legend">
-          <div className="legend-item">
-            <div className="seat-demo available"></div>
-            <span>Disponible</span>
-          </div>
-          <div className="legend-item">
-            <div className="seat-demo reserved"></div>
-            <span>Réservé</span>
-          </div>
-          <div className="legend-item">
-            <div className="seat-demo selected"></div>
-            <span>Sélectionné</span>
-          </div>
-        </div>
-
-        <div className="seat-rows">
-          {Array.from({ length: rows }, (_, rowIndex) => (
-            <div key={rowIndex} className="seat-row">
-              {Array.from({ length: seatsPerRow }, (_, seatIndex) => {
-                const seatNumber = rowIndex * seatsPerRow + seatIndex;
-                if (seatNumber >= seatsToRender.length) return null;
-
-                const seat = seatsToRender[seatNumber];
-                const isSelected = selectedSeats.includes(seat.id);
-                const isReserved = !seat.available || !!seat.isReserved;
-
-                return (
-                  <button
-                    key={seat.id}
-                    className={`seat ${isReserved ? 'reserved' : 'available'} ${isSelected ? 'selected' : ''}`}
-                    onClick={() => toggleSeatSelection(seat.id, isReserved)}
-                    disabled={isReserved}
-                    title={isReserved ? 'Siège déjà réservé' : `Siège ${seat.label || seat.seatNumber}`}
-                  >
-                    {seat.label || seat.seatNumber}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-
-        {selectedSeats.length > 0 && (
-          <div className="reservation-summary">
-            <p>Sièges sélectionnés: {selectedSeats.length}</p>
-            <button className="reserve-btn" onClick={makeReservation}>
-              🎫 Réserver {selectedSeats.length} siège(s)
-            </button>
-          </div>
-        )}
-      </div>
-    );
+    vehicles.forEach(vehicle => {
+      const provider = providers.find(p => p.id === vehicle.providerId);
+      if (provider) {
+        if (!grouped[provider.id]) {
+          grouped[provider.id] = { provider, vehicles: [] };
+        }
+        grouped[provider.id].vehicles.push(vehicle);
+      }
+    });
+    
+    return grouped;
   };
 
   if (loading) {
     return (
       <div className="user-dashboard">
         <div className="dashboard-header">
-          <h1>Tableau de bord utilisateur</h1>
+          <h1>Chargement...</h1>
         </div>
-        <div className="loading">Chargement...</div>
       </div>
     );
   }
 
+  const groupedVehicles = getGroupedVehicles();
+
   return (
     <div className="user-dashboard">
+      {/* Header */}
       <div className="dashboard-header">
         <div className="header-content">
           <div className="user-info">
-            <h1>👤 Bienvenue {userName}</h1>
-            <p>Recherchez et réservez vos places</p>
+            <h1>👤 Dashboard Utilisateur - {userName}</h1>
           </div>
           <button className="logout-btn" onClick={handleLogout}>
             🚪 Déconnexion
@@ -311,6 +272,7 @@ const NewUserDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Message d'erreur */}
       {error && (
         <div className="error-message">
           <p>❌ {error}</p>
@@ -318,161 +280,146 @@ const NewUserDashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="tab-navigation">
-        <button 
-          className={`tab-btn ${activeTab === 'providers' ? 'active' : ''}`}
-          onClick={() => setActiveTab('providers')}
-        >
-          🚐 Fournisseurs & Véhicules
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === 'reservations' ? 'active' : ''}`}
-          onClick={() => setActiveTab('reservations')}
-        >
-          🎫 Mes Réservations ({reservations.length})
-        </button>
-      </div>
+      {/* Layout principal avec 3 divisions */}
+      <div className="dashboard-layout">
+        
+        {/* DIV 1: Liste déroulante Providers/Véhicules */}
+        <div className="selection-panel">
+          <h2>🚗 Sélection du véhicule</h2>
+          <div className="vehicle-selector">
+            <label htmlFor="vehicle-select">Choisir un véhicule :</label>
+            <select
+              id="vehicle-select"
+              value={selectedVehicleId}
+              onChange={(e) => handleVehicleSelection(e.target.value)}
+              className="vehicle-dropdown"
+            >
+              <option value="">-- Sélectionner un véhicule --</option>
+              {Object.values(groupedVehicles).map(({ provider, vehicles: providerVehicles }) => (
+                <optgroup key={provider.id} label={`🏢 ${provider.name}`}>
+                  {providerVehicles.map(vehicle => (
+                    <option key={vehicle.id} value={vehicle.id}>
+                      🚐 {vehicle.name} ({vehicle.make} {vehicle.model}) - {vehicle.capacity} places
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+        </div>
 
-      <div className="tab-content">
-        {activeTab === 'providers' && (
-          <div className="providers-section">
-            <div className="content-layout">
-              {/* Section Fournisseurs */}
-              <div className="providers-panel">
-                <h2>🏢 Fournisseurs disponibles</h2>
-                {providers.length === 0 ? (
-                  <div className="empty-state">
-                    <p>Aucun fournisseur disponible</p>
-                  </div>
-                ) : (
-                  <div className="providers-grid">
-                    {providers.map(provider => (
-                      <div 
-                        key={provider.id} 
-                        className={`provider-card ${selectedProvider?.id === provider.id ? 'selected' : ''}`}
-                        onClick={() => loadProviderVehicles(provider)}
-                      >
-                        <div className="provider-header">
-                          <h3>{provider.name}</h3>
-                          <span className="provider-role">Fournisseur</span>
-                        </div>
-                        <div className="provider-info">
-                          <p>📧 {provider.email}</p>
-                          {provider.phoneNumber && (
-                            <p>📞 {provider.phoneNumber}</p>
-                          )}
-                        </div>
-                        <div className="provider-actions">
-                          <span className="click-hint">Cliquer pour voir les véhicules</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+        {/* DIV 2: Grille des sièges */}
+        <div className="seats-panel">
+          <h2>� Sélection des sièges</h2>
+          
+          {selectedVehicleId ? (
+            <>
+              {/* Légende */}
+              <div className="seat-legend">
+                <div className="legend-item">
+                  <div className="seat-demo available"></div>
+                  <span>Disponible</span>
+                </div>
+                <div className="legend-item">
+                  <div className="seat-demo reserved"></div>
+                  <span>Réservé</span>
+                </div>
+                <div className="legend-item">
+                  <div className="seat-demo selected"></div>
+                  <span>Sélectionné</span>
+                </div>
               </div>
 
-              {/* Section Véhicules */}
-              {selectedProvider && (
-                <div className="vehicles-panel">
-                  <h2>🚗 Véhicules de {selectedProvider.name}</h2>
-                  {vehicles.length === 0 ? (
-                    <div className="empty-state">
-                      <p>Aucun véhicule publié par ce fournisseur</p>
-                    </div>
-                  ) : (
-                    <div className="vehicles-grid">
-                      {vehicles.map(vehicle => (
-                        <div 
-                          key={vehicle.id} 
-                          className={`vehicle-card ${selectedVehicle?.id === vehicle.id ? 'selected' : ''}`}
-                          onClick={() => loadVehicleSeats(vehicle)}
-                        >
-                          <div className="vehicle-header">
-                            <h3>{vehicle.name}</h3>
-                            <span className="vehicle-published">✅ Publié</span>
-                          </div>
-                          <div className="vehicle-details">
-                            <p><strong>Marque:</strong> {vehicle.make}</p>
-                            <p><strong>Modèle:</strong> {vehicle.model}</p>
-                            <p><strong>Plaque:</strong> {vehicle.licensePlate}</p>
-                            <p><strong>Capacité:</strong> {vehicle.capacity || vehicle.seatCount} places</p>
-                          </div>
-                          <div className="vehicle-actions">
-                            <span className="click-hint">Cliquer pour sélectionner des sièges</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Grille des sièges */}
+              <div className="seat-grid">
+                {seats.map(seat => {
+                  const isSelected = selectedSeats.includes(seat.id);
+                  const isReserved = !seat.available || !!seat.isReserved;
+                  
+                  return (
+                    <button
+                      key={seat.id}
+                      className={`seat ${isReserved ? 'reserved' : 'available'} ${isSelected ? 'selected' : ''}`}
+                      onClick={() => toggleSeatSelection(seat.id)}
+                      disabled={isReserved}
+                      title={isReserved ? 'Siège déjà réservé' : `Siège ${seat.label || seat.seatNumber}`}
+                    >
+                      {seat.label || seat.seatNumber}
+                    </button>
+                  );
+                })}
+              </div>
 
-              {/* Section Sièges */}
-              {selectedVehicle && (
-                <div className="seats-panel">
-                  <h2>💺 Sièges - {selectedVehicle.name}</h2>
-                  {renderSeatGrid()}
+              {/* Bouton réserver */}
+              {selectedSeats.length > 0 && (
+                <div className="reservation-actions">
+                  <p>Sièges sélectionnés: {selectedSeats.length}</p>
+                  <button className="reserve-btn" onClick={makeReservation}>
+                    🎫 Réserver {selectedSeats.length} siège(s)
+                  </button>
                 </div>
               )}
+            </>
+          ) : (
+            <div className="empty-state">
+              <p>Sélectionnez un véhicule pour voir les sièges disponibles</p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {activeTab === 'reservations' && (
-          <div className="reservations-section">
-            <h2>🎫 Mes Réservations</h2>
-            {reservations.length === 0 ? (
-              <div className="empty-state">
-                <p>Vous n'avez aucune réservation</p>
-                <button 
-                  className="primary-btn"
-                  onClick={() => setActiveTab('providers')}
-                >
-                  ➕ Faire une réservation
-                </button>
-              </div>
-            ) : (
-              <div className="reservations-grid">
-                {reservations.map(reservation => (
-                  <div key={reservation.id} className="reservation-card">
-                    <div className="reservation-header">
-                      <h3>Réservation #{reservation.id.substring(0, 8)}</h3>
-                      <span className={`status status-${reservation.status.toLowerCase()}`}>
-                        {reservation.status === 'COMMITTED' && '✅ Confirmée'}
-                        {reservation.status === 'PENDING' && '⏳ En attente'}
-                        {reservation.status === 'CANCELLED' && '❌ Annulée'}
-                        {reservation.status === 'REJECTED' && '🚫 Rejetée'}
-                      </span>
-                    </div>
-                    <div className="reservation-details">
-                      <p><strong>Véhicule:</strong> {reservation.vehicleId}</p>
-                      <p><strong>Siège:</strong> {reservation.seatId}</p>
-                      <p><strong>Date:</strong> {new Date(reservation.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="reservation-actions">
-                      {reservation.status === 'COMMITTED' && (
-                        <button 
-                          className="cancel-btn"
-                          onClick={() => cancelReservation(reservation.id)}
-                        >
-                          ❌ Annuler
-                        </button>
-                      )}
-                      {reservation.status === 'CANCELLED' && (
-                        <button 
-                          className="delete-btn"
-                          onClick={() => deleteReservation(reservation.id)}
-                        >
-                          🗑️ Supprimer
-                        </button>
-                      )}
-                    </div>
+        {/* DIV 3: Liste des réservations */}
+        <div className="reservations-panel">
+          <h2>🎫 Mes Réservations ({reservations.length})</h2>
+          
+          {reservations.length === 0 ? (
+            <div className="empty-state">
+              <p>Aucune réservation</p>
+            </div>
+          ) : (
+            <div className="reservations-list">
+              {reservations.map(reservation => (
+                <div key={reservation.id} className="reservation-item">
+                  <div className="reservation-header">
+                    <h4>#{reservation.id.substring(0, 8)}</h4>
+                    <span className={`status status-${reservation.status.toLowerCase()}`}>
+                      {reservation.status === 'COMMITTED' && '✅ Confirmée'}
+                      {reservation.status === 'PENDING' && '⏳ En attente'}
+                      {reservation.status === 'CANCELLED' && '❌ Annulée'}
+                      {reservation.status === 'REJECTED' && '🚫 Rejetée'}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                  
+                  <div className="reservation-details">
+                    <p><strong>Véhicule:</strong> {reservation.vehicleName}</p>
+                    <p><strong>Fournisseur:</strong> {reservation.providerName}</p>
+                    <p><strong>Siège:</strong> {reservation.seatId}</p>
+                    <p><strong>Date:</strong> {new Date(reservation.createdAt).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                  
+                  <div className="reservation-actions">
+                    {reservation.status === 'COMMITTED' && (
+                      <button 
+                        className="cancel-btn"
+                        onClick={() => cancelReservation(reservation.id)}
+                      >
+                        ❌ Annuler
+                      </button>
+                    )}
+                    {reservation.status === 'CANCELLED' && (
+                      <button 
+                        className="delete-btn"
+                        onClick={() => deleteReservation(reservation.id)}
+                      >
+                        🗑️ Supprimer
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
       </div>
     </div>
   );
