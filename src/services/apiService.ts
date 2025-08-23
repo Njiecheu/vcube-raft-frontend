@@ -682,13 +682,19 @@ class ApiService {
     return this.handleResponse(response);
   }
 
-  // Annuler une réservation
+  // Annuler une réservation (temporairement désactivé - endpoint non disponible)
   async cancelReservation(reservationId: string): Promise<unknown> {
+    console.warn('❌ Annulation désactivée - Endpoint /cancel non disponible sur le backend', reservationId);
+    throw new Error('Fonction d\'annulation temporairement indisponible. Contactez le support.');
+    
+    // Code original commenté jusqu'à ce que le backend soit mis à jour
+    /*
     const response = await this.fetchWithFailover('/reservations/' + reservationId + '/cancel', {
       method: 'PUT',
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
+    */
   }
 
   // Supprimer une réservation

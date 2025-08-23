@@ -76,7 +76,21 @@ const UserDashboard: React.FC = () => {
 
       setProviders(allProviders as Provider[]);
       setVehicles(publishedVehicles);
-      setReservations(userReservations as Reservation[]);
+      
+      // Enrichir les réservations avec les informations des véhicules et fournisseurs
+      const enrichedReservations = (userReservations as Reservation[]).map(reservation => {
+        const vehicle = publishedVehicles.find((v: any) => v.id === reservation.vehicleId);
+        const provider = (allProviders as Provider[]).find(p => p.id === reservation.providerId);
+        
+        return {
+          ...reservation,
+          vehicleModel: vehicle?.model || vehicle?.name || 'Véhicule inconnu',
+          providerName: provider?.name || 'Fournisseur inconnu',
+          seatNumber: reservation.seatId ? `Siège ${reservation.seatId.slice(-4)}` : 'N/A'
+        };
+      });
+      
+      setReservations(enrichedReservations);
 
     } catch (err) {
       setError('Erreur lors du chargement des données');
