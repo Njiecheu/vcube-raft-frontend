@@ -12,7 +12,6 @@ interface Vehicle {
   capacity: number;
   published: boolean;
   providerId: string;
-  seatCount?: number;
 }
 
 interface Seat {
@@ -20,8 +19,6 @@ interface Seat {
   vehicleId: string;
   label: string;
   available: boolean;
-  seatNumber?: string;
-  isReserved?: boolean;
 }
 
 interface Reservation {
@@ -32,8 +29,6 @@ interface Reservation {
   seatId: string;
   status: 'COMMITTED' | 'PENDING' | 'REJECTED' | 'CANCELLED';
   createdAt: string;
-  vehicleName?: string;
-  userName?: string;
 }
 
 const VCubePSProviderDashboard: React.FC = () => {
@@ -72,7 +67,6 @@ const VCubePSProviderDashboard: React.FC = () => {
     checkAuth();
     loadProviderData();
     
-    // Actualisation automatique toutes les 30 secondes
     const interval = setInterval(() => {
       loadProviderData();
     }, 30000);
@@ -120,8 +114,6 @@ const VCubePSProviderDashboard: React.FC = () => {
           totalSeats += seats.length;
           occupiedSeats += seats.filter(seat => !seat.available).length;
         } catch (error) {
-          console.error('Erreur lors du chargement des sièges:', error);
-          // Si pas de sièges dans la DB, utiliser la capacité du véhicule
           totalSeats += vehicle.capacity || 0;
         }
       }
@@ -133,7 +125,6 @@ const VCubePSProviderDashboard: React.FC = () => {
       setTotalReservations(occupiedSeats);
       setOccupancyRate(occupancyRate);
     } catch (error) {
-      console.error('Erreur lors du chargement des statistiques:', error);
       setTotalVehicles(0);
       setTotalSeats(0);
       setTotalReservations(0);
@@ -149,7 +140,6 @@ const VCubePSProviderDashboard: React.FC = () => {
       const vehiclesResponse = await apiService.getProviderVehicles(providerId);
       setVehicles(vehiclesResponse as Vehicle[]);
     } catch (error) {
-      console.error('Erreur lors du chargement des véhicules:', error);
       setError('Erreur lors du chargement des véhicules');
       setVehicles([]);
     } finally {
@@ -161,19 +151,15 @@ const VCubePSProviderDashboard: React.FC = () => {
     if (!providerId) return;
 
     try {
-      // Charger toutes les réservations et filtrer par provider
       const allReservationsResponse = await apiService.getAllReservations();
       const allReservations = allReservationsResponse as Reservation[];
       
-      // Filtrer les réservations pour ce provider
       const providerReservations = allReservations.filter(reservation => 
         reservation.providerId === providerId
       );
       
       setReservations(providerReservations);
     } catch (error) {
-      console.error('Erreur lors du chargement des réservations:', error);
-      // En cas d'erreur, initialiser avec un tableau vide
       setReservations([]);
     }
   };
@@ -224,7 +210,6 @@ const VCubePSProviderDashboard: React.FC = () => {
       setShowVehicleForm(true);
       setEditingVehicleId(vehicleId);
     } catch (error) {
-      console.error('Erreur lors du chargement du véhicule:', error);
       showAlert('Erreur lors du chargement du véhicule', 'error');
     }
   };
@@ -237,7 +222,6 @@ const VCubePSProviderDashboard: React.FC = () => {
         loadProviderVehicles();
         loadProviderStats();
       } catch (error) {
-        console.error('Erreur lors de la publication:', error);
         showAlert('Erreur lors de la publication', 'error');
       }
     }
@@ -251,7 +235,6 @@ const VCubePSProviderDashboard: React.FC = () => {
         loadProviderVehicles();
         loadProviderStats();
       } catch (error) {
-        console.error('Erreur lors de la dépublication:', error);
         showAlert('Erreur lors de la dépublication', 'error');
       }
     }
@@ -265,7 +248,6 @@ const VCubePSProviderDashboard: React.FC = () => {
         loadProviderVehicles();
         loadProviderStats();
       } catch (error) {
-        console.error('Erreur lors de la suppression:', error);
         showAlert('Erreur lors de la suppression', 'error');
       }
     }
@@ -299,7 +281,6 @@ const VCubePSProviderDashboard: React.FC = () => {
         loadProviderStats();
       }
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
       showAlert('Erreur lors de la sauvegarde', 'error');
     }
   };
@@ -327,41 +308,9 @@ const VCubePSProviderDashboard: React.FC = () => {
     }, 5000);
   };
 
-  // Fonction pour obtenir les sièges d'un véhicule (utilisé pour l'affichage)
-  const [vehicleSeats, setVehicleSeats] = useState<{ [key: string]: Seat[] }>({});
-
-  useEffect(() => {
-    const loadAllSeats = async () => {
-      const seatsMap: { [key: string]: Seat[] } = {};
-      for (const vehicle of vehicles) {
-        try {
-          const seats = await apiService.getVehicleSeats(vehicle.id) as Seat[];
-          seatsMap[vehicle.id] = seats;
-        } catch (error) {
-          console.error('Erreur lors du chargement des sièges:', error);
-          // Créer des sièges par défaut si aucun n'existe
-          const defaultSeats = Array.from({ length: vehicle.capacity || 0 }, (_, index) => ({
-            id: `default-seat-${vehicle.id}-${index + 1}`,
-            vehicleId: vehicle.id,
-            label: `S${index + 1}`,
-            seatNumber: `S${index + 1}`,
-            available: true,
-            isReserved: false
-          }));
-          seatsMap[vehicle.id] = defaultSeats;
-        }
-      }
-      setVehicleSeats(seatsMap);
-    };
-
-    if (vehicles.length > 0) {
-      loadAllSeats();
-    }
-  }, [vehicles]);
-
   if (loading) {
     return (
-      <div className="provider-dashboard-container">
+      <div>
         <nav className="navbar">
           <h1>🚐 VCube-PS - Tableau de Bord Fournisseur</h1>
           <div className="user-info">
@@ -373,7 +322,7 @@ const VCubePSProviderDashboard: React.FC = () => {
   }
 
   return (
-    <div className="provider-dashboard-container">
+    <div>
       <nav className="navbar">
         <h1>🚐 VCube-PS - Tableau de Bord Fournisseur</h1>
         <div className="user-info">
@@ -424,20 +373,23 @@ const VCubePSProviderDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="dashboard-grid">
-          {/* Gestion des véhicules */}
-          <div className="card">
-            <h2>🚐 Mes Véhicules</h2>
-            
-            <button className="btn toggle-form-btn" onClick={toggleVehicleForm}>
-              <span id="form-toggle-text">
-                {showVehicleForm ? '✖️ Fermer le formulaire' : '➕ Ajouter un Véhicule'}
-              </span>
-            </button>
-            
-            {showVehicleForm && (
-              <div className="add-vehicle-form">
-                <form onSubmit={handleSubmit}>
+        {/* Gestion des véhicules */}
+        <div className="card">
+          <h2>🚐 Gestion des Véhicules</h2>
+          
+          {/* Bouton pour afficher/masquer le formulaire */}
+          <button className="btn toggle-form-btn" onClick={toggleVehicleForm}>
+            <span id="form-toggle-text">
+              {showVehicleForm ? '✖️ Fermer le formulaire' : '+ Ajouter un Véhicule'}
+            </span>
+          </button>
+          
+          {/* Formulaire d'ajout/modification de véhicule */}
+          {showVehicleForm && (
+            <div id="vehicle-form" style={{marginBottom: '2rem'}}>
+              <form id="vehicle-creation-form" onSubmit={handleSubmit}>
+                <input type="hidden" id="vehicle-id" name="vehicleId" value={formData.vehicleId} />
+                <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="vehicle-name">Nom du véhicule</label>
                     <input 
@@ -450,7 +402,6 @@ const VCubePSProviderDashboard: React.FC = () => {
                       placeholder="Ex: Bus Express A1"
                     />
                   </div>
-                  
                   <div className="form-group">
                     <label htmlFor="vehicle-capacity">Nombre de places</label>
                     <input 
@@ -465,7 +416,9 @@ const VCubePSProviderDashboard: React.FC = () => {
                       placeholder="Ex: 40"
                     />
                   </div>
-                  
+                </div>
+                
+                <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="vehicle-make">Marque</label>
                     <input 
@@ -477,7 +430,6 @@ const VCubePSProviderDashboard: React.FC = () => {
                       placeholder="Ex: Mercedes, Volvo, Iveco"
                     />
                   </div>
-                  
                   <div className="form-group">
                     <label htmlFor="vehicle-model">Modèle</label>
                     <input 
@@ -489,7 +441,9 @@ const VCubePSProviderDashboard: React.FC = () => {
                       placeholder="Ex: Citaro, 7900, Crossway"
                     />
                   </div>
-                  
+                </div>
+                
+                <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="vehicle-license">Plaque d'immatriculation</label>
                     <input 
@@ -501,128 +455,98 @@ const VCubePSProviderDashboard: React.FC = () => {
                       placeholder="Ex: AB-123-CD"
                     />
                   </div>
-                  
+                  <div className="form-group">
+                    <label htmlFor="vehicle-status">Statut</label>
+                    <select 
+                      id="vehicle-status" 
+                      name="vehicleStatus"
+                      value={formData.vehicleStatus}
+                      onChange={handleInputChange}
+                    >
+                      <option value="draft">Brouillon</option>
+                      <option value="published">Publié</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="form-actions">
                   <button type="submit" className="btn btn-primary">
-                    {editingVehicleId ? 'Modifier le Véhicule' : 'Ajouter le Véhicule'}
+                    <span id="form-submit-text">
+                      {editingVehicleId ? 'Modifier le Véhicule' : 'Créer le Véhicule'}
+                    </span>
                   </button>
-                  <button type="button" className="btn btn-secondary" onClick={cancelVehicleForm}>
-                    Annuler
-                  </button>
-                </form>
-              </div>
-            )}
-            
-            <div id="vehicle-alert"></div>
-            
-            <div className="vehicle-list">
-              {vehicles.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#666' }}>Chargement des véhicules...</p>
-              ) : (
-                vehicles.map(vehicle => {
-                  const seats = vehicleSeats[vehicle.id] || [];
-                  const availableSeats = seats.filter(seat => seat.available).length;
-                  const totalSeats = seats.length;
-
-                  return (
-                    <div key={vehicle.id} className="vehicle-item">
-                      <div className="vehicle-header">
-                        <div className="vehicle-title">
-                          {vehicle.name || `${vehicle.make || ''} ${vehicle.model || ''}`.trim() || 'Véhicule'}
-                        </div>
-                        <div className="vehicle-plate">
-                          {vehicle.licensePlate || 'N/A'}
-                        </div>
+                  <button type="button" className="btn btn-secondary" onClick={cancelVehicleForm}>Annuler</button>
+                </div>
+              </form>
+            </div>
+          )}
+          
+          {/* Liste des véhicules */}
+          <div id="vehicles-list">
+            {vehicles.length === 0 ? (
+              <p style={{textAlign: 'center', color: '#666'}}>Chargement des véhicules...</p>
+            ) : (
+              vehicles.map(vehicle => {
+                const status = vehicle.published ? 'published' : 'draft';
+                const statusText = vehicle.published ? 'Publié' : 'Brouillon';
+                
+                return (
+                  <div key={vehicle.id} className="vehicle-item">
+                    <div className="vehicle-header">
+                      <div className="vehicle-title">{vehicle.name || (vehicle.make + ' ' + vehicle.model)}</div>
+                      <div className={`vehicle-status status-${status}`}>{statusText}</div>
+                    </div>
+                    
+                    <div className="vehicle-details">
+                      <div className="detail-item">
+                        <div className="detail-label">Marque</div>
+                        <div className="detail-value">{vehicle.make || 'N/A'}</div>
                       </div>
-                      
-                      <div className="vehicle-info">
-                        <div className="info-item">
-                          <div className="info-label">Type</div>
-                          <div className="info-value">{vehicle.make || 'N/A'} {vehicle.model || ''}</div>
-                        </div>
-                        <div className="info-item">
-                          <div className="info-label">Capacité</div>
-                          <div className="info-value">{vehicle.capacity || 0} places</div>
-                        </div>
-                        <div className="info-item">
-                          <div className="info-label">Sièges disponibles</div>
-                          <div className="info-value">{availableSeats} / {totalSeats}</div>
-                        </div>
-                        <div className="info-item">
-                          <div className="info-label">Statut</div>
-                          <div className="info-value">
-                            <span className={`status-badge ${vehicle.published ? 'status-committed' : 'status-pending'}`}>
-                              {vehicle.published ? 'Publié' : 'Brouillon'}
-                            </span>
-                          </div>
-                        </div>
+                      <div className="detail-item">
+                        <div className="detail-label">Modèle</div>
+                        <div className="detail-value">{vehicle.model || 'N/A'}</div>
                       </div>
-                      
-                      {/* Grille des sièges */}
-                      <div className="seat-grid">
-                        {seats.slice(0, 12).map((seat, index) => (
-                          <div
-                            key={seat.id}
-                            className={`seat-mini ${seat.available ? 'available' : 'reserved'}`}
-                          >
-                            {index + 1}
-                          </div>
-                        ))}
-                        {seats.length > 12 && (
-                          <div className="seat-mini" style={{ background: '#999', color: 'white' }}>
-                            +{seats.length - 12}
-                          </div>
-                        )}
+                      <div className="detail-item">
+                        <div className="detail-label">Plaque</div>
+                        <div className="detail-value">{vehicle.licensePlate || 'N/A'}</div>
                       </div>
-                      
-                      {/* Boutons d'action */}
-                      <div className="vehicle-actions">
-                        <button 
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => editVehicle(vehicle.id)}
-                          title="Modifier le véhicule"
-                        >
-                          ✏️ Modifier
-                        </button>
-                        
-                        {vehicle.published ? (
-                          <button 
-                            className="btn btn-warning btn-sm"
-                            onClick={() => unpublishVehicle(vehicle.id)}
-                            title="Dépublier le véhicule"
-                          >
-                            👁️‍🗨️ Dépublier
-                          </button>
-                        ) : (
-                          <button 
-                            className="btn btn-success btn-sm"
-                            onClick={() => publishVehicle(vehicle.id)}
-                            title="Publier le véhicule"
-                          >
-                            📢 Publier
-                          </button>
-                        )}
-                        
-                        <button 
-                          className="btn btn-danger btn-sm"
-                          onClick={() => deleteVehicle(vehicle.id)}
-                          title="Supprimer le véhicule"
-                        >
-                          🗑️ Supprimer
-                        </button>
+                      <div className="detail-item">
+                        <div className="detail-label">Sièges</div>
+                        <div className="detail-value">{vehicle.capacity || 0} places</div>
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
+                    
+                    <div className="vehicle-actions">
+                      <button className="btn-edit" onClick={() => editVehicle(vehicle.id)}>
+                        ✏️ Modifier
+                      </button>
+                      {vehicle.published ? (
+                        <button className="btn-unpublish" onClick={() => unpublishVehicle(vehicle.id)}>
+                          � Dépublier
+                        </button>
+                      ) : (
+                        <button className="btn-publish" onClick={() => publishVehicle(vehicle.id)}>
+                          📢 Publier
+                        </button>
+                      )}
+                      <button className="btn-delete" onClick={() => deleteVehicle(vehicle.id)}>
+                        🗑️ Supprimer
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
-          
+        </div>
+
+        <div className="dashboard-grid">
           {/* Réservations */}
           <div className="card">
             <h2>📋 Réservations de mes Véhicules</h2>
             <div className="reservation-list">
               {reservations.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#666' }}>Aucune réservation trouvée</p>
+                <p style={{textAlign: 'center', color: '#666'}}>Chargement des réservations...</p>
               ) : (
                 reservations.map(reservation => {
                   const vehicle = vehicles.find(v => v.id === reservation.vehicleId);
